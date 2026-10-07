@@ -13,6 +13,7 @@
 ![Ollama](https://img.shields.io/badge/Ollama-Local_LLMs-000000?style=for-the-badge&logo=ollama&logoColor=white)
 ![Llama 3](https://img.shields.io/badge/Llama_3-8B_|_70B-0467DF?style=for-the-badge&logo=meta&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-NCF_Baseline-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)
 
 **MSc Artificial Intelligence Dissertation · De Montfort University · 2025**
 
@@ -426,6 +427,12 @@ If LLAMAREC helps your research, please cite it:
 - **Meta AI** for the Llama 3 model family
 - **The Ollama team** for making local LLMs easy to run
 - **McAuley Lab** for the public Amazon Reviews dataset
+
+---
+
+## 📄 License
+
+This project is released under the [MIT License](LICENSE). You are free to use, change and share the code, as long as you keep the copyright notice.
 
 ---
 
