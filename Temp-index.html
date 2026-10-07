@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLAMAREC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a1222; --bg2:#0e1a31; --panel:#111d36; --panel2:#15243f; --line:#22365a;
+    --text:#e7eef9; --muted:#8ea2c3; --dim:#5f7499;
+    --accent:#3b82f6; --accent2:#93c5fd; --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:radial-gradient(1200px 500px at 85% -10%, #1b3a6e55, transparent 60%), var(--bg);
+    color:var(--text); font-family:Inter,system-ui,sans-serif; font-size:15px; line-height:1.5;
+    min-height:100vh;
+  }
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 16px}
+
+  /* header */
+  header{border-bottom:1px solid var(--line); background:#0a1222cc; backdrop-filter:blur(8px); position:sticky; top:0; z-index:5}
+  .hbar{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 0}
+  .brand{display:flex; align-items:center; gap:12px}
+  .logo{width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,#1e3a8a,#3b82f6); display:grid; place-items:center}
+  .brand h1{font-size:18px; margin:0; letter-spacing:.5px}
+  .brand p{margin:0; font-size:12.5px; color:var(--muted)}
+  .status{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); border:1px solid var(--line); padding:6px 12px; border-radius:999px; background:var(--panel)}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--warn)}
+  .dot.ok{background:var(--ok); box-shadow:0 0 8px var(--ok)}
+  .gh{color:var(--muted); text-decoration:none; font-size:13px}
+  .gh:hover{color:var(--text)}
+
+  /* hero */
+  .hero{padding:28px 0 18px}
+  .hero h2{font-size:26px; margin:0 0 6px; font-weight:700}
+  .hero p{margin:0; color:var(--muted); max-width:680px}
+
+  /* layout */
+  .grid{display:grid; grid-template-columns:420px 1fr; gap:20px; padding-bottom:40px}
+  @media (max-width:940px){.grid{grid-template-columns:minmax(0,1fr)}}
+  .grid > div{min-width:0}
+  .addrow select{flex:none}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px}
+  .card + .card{margin-top:16px}
+  .label{display:block; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:0 0 8px}
+  .section{margin-bottom:18px}
+  .section:last-child{margin-bottom:0}
+  .hint{font-size:12.5px; color:var(--dim); margin-top:6px}
+
+  /* domain picker */
+  .flow{display:grid; grid-template-columns:1fr 34px 1fr; align-items:center; gap:8px}
+  .arrow{display:grid; place-items:center; color:var(--accent2)}
+  .domains{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+  .dom{display:flex; align-items:center; gap:7px; padding:8px 9px; border-radius:10px; border:1px solid var(--line); background:var(--panel2); color:var(--muted); cursor:pointer; font-size:12.5px; font-family:inherit; text-align:left}
+  .dom svg{flex:none}
+  .dom:hover:not(:disabled){border-color:#35507f; color:var(--text)}
+  .dom.on{border-color:var(--accent); color:#fff; background:#1d3566}
+  .dom:disabled{opacity:.35; cursor:not-allowed}
+
+  /* items */
+  .addrow{display:flex; gap:6px}
+  input[type=text], select{
+    background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:10px;
+    padding:9px 11px; font:inherit; font-size:14px; outline:none; min-width:0
+  }
+  input[type=text]:focus, select:focus{border-color:var(--accent)}
+  .addrow input{flex:1}
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; min-height:34px}
+  .chip{display:inline-flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--line); padding:5px 6px 5px 10px; border-radius:999px; font-size:13px}
+  .chip .stars{color:var(--warn); font-size:11px}
+  .chip button{background:none; border:0; color:var(--dim); cursor:pointer; font-size:15px; line-height:1; padding:0 4px}
+  .chip button:hover{color:var(--err)}
+  .empty{color:var(--dim); font-size:13px; padding:6px 0}
+  .samples{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap}
+
+  .btn{border:1px solid var(--line); background:var(--panel2); color:var(--text); border-radius:10px; padding:8px 12px; font:inherit; font-size:13px; cursor:pointer}
+  .btn:hover{border-color:#35507f}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; width:100%; padding:12px; font-size:15px}
+  .btn.primary:hover{background:#2f73e0}
+  .btn.primary:disabled{opacity:.6; cursor:wait}
+  .btn.small{padding:6px 10px; font-size:12.5px}
+
+  /* segmented */
+  .seg{display:grid; grid-template-columns:repeat(3,1fr); background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:3px; gap:3px}
+  .seg.two{grid-template-columns:repeat(2,1fr)}
+  .seg button{background:none; border:0; color:var(--muted); padding:7px 4px; border-radius:8px; font:inherit; font-size:13px; cursor:pointer}
+  .seg button.on{background:var(--panel2); color:#fff; box-shadow:inset 0 0 0 1px var(--accent)}
+
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .row2 select{width:100%}
+  input[type=range]{width:100%; accent-color:var(--accent)}
+  .rangehead{display:flex; justify-content:space-between; align-items:baseline}
+  .rangehead span{font-size:13px; color:var(--accent2)}
+
+  details.conn summary{cursor:pointer; color:var(--muted); font-size:13px; list-style:none}
+  details.conn summary::-webkit-details-marker{display:none}
+  details.conn[open] summary{margin-bottom:10px}
+  .connrow{display:flex; gap:6px}
+  .connrow input{flex:1}
+  .check{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-top:10px}
+  pre.cmd{background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:12px; overflow-x:auto; margin:8px 0 0; color:var(--accent2)}
+
+  /* results */
+  .reshead{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+  .reshead h3{margin:0; font-size:17px}
+  .meta{display:flex; gap:6px; flex-wrap:wrap}
+  .tag{font-size:12px; border:1px solid var(--line); background:var(--panel2); color:var(--muted); padding:3px 9px; border-radius:999px}
+  .tag.demo{color:var(--warn); border-color:#5b4a17}
+  .tag.live{color:var(--ok); border-color:#1d5a45}
+
+  .placeholder{text-align:center; padding:56px 20px; color:var(--muted)}
+  .placeholder svg{opacity:.8; margin-bottom:10px}
+  .placeholder h4{margin:0 0 6px; color:var(--text); font-size:16px}
+  .placeholder p{margin:0 auto; max-width:380px; font-size:14px}
+
+  .rec{display:grid; grid-template-columns:40px 1fr; gap:12px; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--panel2); margin-bottom:10px; animation:rise .35s ease both}
+  .rec:nth-child(2){animation-delay:.06s}.rec:nth-child(3){animation-delay:.12s}.rec:nth-child(4){animation-delay:.18s}.rec:nth-child(5){animation-delay:.24s}
+  @keyframes rise{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
+  .num{width:40px; height:40px; border-radius:10px; background:#1d3566; color:var(--accent2); display:grid; place-items:center; font-weight:700}
+  .rec h4{margin:0; font-size:16px}
+  .rec .by{color:var(--muted); font-size:13px; margin:1px 0 6px}
+  .rec p{margin:0 0 8px; font-size:14px; color:#cfdaec}
+  .because{display:flex; flex-wrap:wrap; gap:5px; align-items:center; font-size:12px; color:var(--dim)}
+  .because span.src{color:var(--accent2); background:#13284d; border:1px solid #234274; padding:2px 8px; border-radius:999px}
+
+  details.box{border:1px solid var(--line); border-radius:12px; background:var(--bg2); margin-top:12px}
+  details.box summary{cursor:pointer; padding:11px 14px; font-size:13.5px; color:var(--muted); font-weight:500}
+  details.box[open] summary{border-bottom:1px solid var(--line)}
+  details.box .inner{padding:12px 14px; font-size:13.5px; color:#cfdaec; white-space:pre-wrap}
+  details.box pre{margin:0; padding:12px 14px; font-size:12px; white-space:pre-wrap; color:#b7c7e3; max-height:340px; overflow:auto}
+  .actions{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap}
+
+  .spinner{width:34px; height:34px; border:3px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 12px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error{border:1px solid #5a2330; background:#2a1219; color:#fecaca; padding:12px 14px; border-radius:12px; font-size:14px}
+
+  .flow{grid-template-columns:1fr; gap:4px}
+  .arrow{transform:rotate(90deg); height:24px}
+  .domains{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .dom{flex-direction:column; gap:4px; text-align:center; padding:9px 4px; font-size:12px}
+  @media (max-width:600px){
+    .hbar{flex-wrap:wrap}
+    .brand p{display:none}
+    .status{font-size:12px; padding:5px 10px}
+    .hero h2{font-size:22px}
+    .dom{font-size:11.5px}
+    .seg button{font-size:12px}
+  }
+  footer{border-top:1px solid var(--line); color:var(--dim); font-size:12.5px; padding:16px 0 28px}
+  footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hbar">
+    <div class="brand">
+      <div class="logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="12" cy="11" r="1.5"/><path d="M6.5 7l4.3 3M17.5 7l-4.3 3M12 12.5V16"/></svg>
+      </div>
+      <div>
+        <h1>LLAMAREC</h1>
+        <p>Cross-domain recommendations with local Llama 3</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <a class="gh" href="https://github.com/ThanigaiSingaravelan/llamrec" target="_blank" rel="noopener">GitHub</a>
+      <div class="status" id="status"><span class="dot" id="statusDot"></span><span id="statusText">Checking Ollama…</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h2>Turn what you liked in one domain into picks for another</h2>
+    <p>Add a few items you rated highly, choose where to take them, and LLAMAREC asks a locally running Llama 3 model to find matches. Nothing leaves your machine.</p>
+  </section>
+
+  <div class="grid">
+    <!-- LEFT: controls -->
+    <div>
+      <div class="card">
+        <div class="section">
+          <span class="label">Domains</span>
+          <div class="flow">
+            <div>
+              <div class="hint" style="margin:0 0 6px">From</div>
+              <div class="domains" id="srcDomains"></div>
+            </div>
+            <div class="arrow">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </div>
+            <div>
+              <div class="hint" style="margin:0 0 6px">To</div>
+              <div class="domains" id="tgtDomains"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <span class="label" id="itemsLabel">Liked items</span>
+          <div class="addrow">
+            <input type="text" id="itemInput" placeholder="Type a title and press Enter" autocomplete="off">
+            <select id="ratingInput" aria-label="Rating">
+              <option value="5">★5</option><option value="4">★4</option><option value="3">★3</option>
+            </select>
+            <button class="btn" id="addBtn">Add</button>
+          </div>
+          <div class="chips" id="chips"></div>
+          <div class="samples">
+            <button class="btn small" data-sample="cold">Load cold user sample</button>
+            <button class="btn small" data-sample="warm">Load warm user sample</button>
+            <button class="btn small" id="clearBtn">Clear</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <span class="label">User profile</span>
+          <div class="seg two" id="userSeg">
+            <button data-v="cold" class="on">Cold (&lt;50 interactions)</button>
+            <button data-v="warm">Warm (&gt;200 interactions)</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <span class="label">Prompt strategy</span>
+          <div class="seg" id="stratSeg">
+            <button data-v="standard" class="on">Standard</button>
+            <button data-v="fewshot">Few-shot</button>
+            <button data-v="cot">Chain-of-thought</button>
+          </div>
+        </div>
+
+        <div class="section row2">
+          <div>
+            <span class="label">Model</span>
+            <select id="modelSel">
+              <option>llama3:8b</option>
+              <option>llama3.1:8b</option>
+              <option>llama3:70b</option>
+            </select>
+          </div>
+          <div>
+            <span class="label">Results</span>
+            <select id="kSel">
+              <option value="3" selected>Top 3</option>
+              <option value="5">Top 5</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="rangehead"><span class="label">Temperature</span><span class="mono" id="tempVal">0.7</span></div>
+          <input type="range" id="temp" min="0" max="1.2" step="0.1" value="0.7">
+        </div>
+
+        <button class="btn primary" id="goBtn">Generate recommendations</button>
+      </div>
+
+      <div class="card">
+        <details class="conn">
+          <summary>Connection settings ▾</summary>
+          <div class="connrow">
+            <input type="text" id="ollamaUrl" value="http://localhost:11434" aria-label="Ollama URL">
+            <button class="btn" id="checkBtn">Check</button>
+          </div>
+          <label class="check"><input type="checkbox" id="demoToggle"> Use demo data instead of Ollama</label>
+          <div class="hint">To let this page call Ollama from the browser, start the server with CORS allowed:</div>
+          <pre class="cmd mono">OLLAMA_ORIGINS="*" ollama serve</pre>
+        </details>
+      </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div>
+      <div class="card" id="results">
+        <div class="placeholder">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="1.5" stroke-linecap="round"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6.6 7.2l3.5 3.3M17.4 7.2l-3.5 3.3M6.6 16.8l3.5-3.3M17.4 16.8l-3.5-3.3"/></svg>
+          <h4>No recommendations yet</h4>
+          <p>Load a sample user or add your own items, then hit Generate. Results show up here with the reasoning behind each pick.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    LLAMAREC, MSc AI dissertation project at De Montfort University. Built by Thanigai Singaravelan Senthil Kumar.
+    Models run locally through <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a>.
+  </div>
+</footer>
+
+<script>
+(() => {
+  // ---------- data ----------
+  const ICONS = {
+    book:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M19 19v2H6"/></svg>',
+    film:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>',
+    disc:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>',
+    music:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>'
+  };
+  const DOMAINS = {
+    Books:        {label:'Books',         icon:'book',  noun:'book'},
+    Movies_and_TV:{label:'Movies & TV',   icon:'film',  noun:'movie or TV show'},
+    CDs_and_Vinyl:{label:'CDs & Vinyl',   icon:'disc',  noun:'album'},
+    Digital_Music:{label:'Digital Music', icon:'music', noun:'track or album'}
+  };
+
+  const SAMPLES = {
+    cold: { source:'Books', target:'Movies_and_TV', userType:'cold', items:[
+      {title:'The Martian', rating:5},{title:'Project Hail Mary', rating:5},
+      {title:'Dune', rating:4},{title:'Ready Player One', rating:4}
+    ]},
+    warm: { source:'Movies_and_TV', target:'Books', userType:'warm', items:[
+      {title:'Arrival', rating:5},{title:'Interstellar', rating:5},{title:'The Prestige', rating:5},
+      {title:'Blade Runner 2049', rating:5},{title:'Ex Machina', rating:4},{title:'Inception', rating:5},
+      {title:'Prisoners', rating:4},{title:'Sicario', rating:4},{title:'Her', rating:4},
+      {title:'Gone Girl', rating:4},{title:'Whiplash', rating:5},{title:'The Social Network', rating:4}
+    ]}
+  };
+
+  const DEMO = {
+    Movies_and_TV:[
+      {title:'Arrival', creator:'Denis Villeneuve', year:'2016', reason:'Problem solving under pressure, told through a scientist trying to communicate with something completely unfamiliar.'},
+      {title:'Interstellar', creator:'Christopher Nolan', year:'2014', reason:'Hard science fiction with real stakes and a survival story that leans on clever engineering.'},
+      {title:'Moon', creator:'Duncan Jones', year:'2009', reason:'A small, isolated cast in space and a mystery that unfolds through careful reasoning.'},
+      {title:'Ex Machina', creator:'Alex Garland', year:'2014', reason:'Tight, idea-driven sci-fi that asks hard questions about technology without losing tension.'},
+      {title:'Gattaca', creator:'Andrew Niccol', year:'1997', reason:'An underdog protagonist beating a system through grit and preparation.'}
+    ],
+    Books:[
+      {title:'The Three-Body Problem', creator:'Cixin Liu', year:'2008', reason:'Big scientific ideas and first contact handled with the same patience and scale as the films you rated highly.'},
+      {title:'Recursion', creator:'Blake Crouch', year:'2019', reason:'A twisty plot built around memory and time, close in feel to mind-bending thrillers.'},
+      {title:'Exhalation', creator:'Ted Chiang', year:'2019', reason:'Short stories with quiet, emotional science fiction. Chiang also wrote the story Arrival is based on.'},
+      {title:'Dark Matter', creator:'Blake Crouch', year:'2016', reason:'Fast, tense and centred on a scientist whose life is turned inside out.'},
+      {title:'Hyperion', creator:'Dan Simmons', year:'1989', reason:'Layered storytelling and a slow reveal that rewards close attention.'}
+    ],
+    CDs_and_Vinyl:[
+      {title:'Interstellar (Original Soundtrack)', creator:'Hans Zimmer', year:'2014', reason:'Huge, organ-led score that matches a taste for epic science fiction.'},
+      {title:'Blade Runner (Soundtrack)', creator:'Vangelis', year:'1994', reason:'Moody synth textures that suit atmospheric, future-noir stories.'},
+      {title:'OK Computer', creator:'Radiohead', year:'1997', reason:'An album about technology and isolation that fits thoughtful, slightly dark themes.'},
+      {title:'Random Access Memories', creator:'Daft Punk', year:'2013', reason:'Polished and playful, a good bridge for fans of retro-future pop culture.'},
+      {title:'Arrival (Soundtrack)', creator:'Jóhann Jóhannsson', year:'2016', reason:'Minimal and haunting, built for slow, cerebral stories.'}
+    ],
+    Digital_Music:[
+      {title:'On the Nature of Daylight', creator:'Max Richter', year:'2004', reason:'A short, emotional piece that pairs well with reflective science fiction.'},
+      {title:'Immunity', creator:'Jon Hopkins', year:'2013', reason:'Electronic music with a sense of build and release, like a well-paced thriller.'},
+      {title:'Midnight City', creator:'M83', year:'2011', reason:'Bright, cinematic synth pop with a nostalgic edge.'},
+      {title:'re:member', creator:'Ólafur Arnalds', year:'2018', reason:'Piano and electronics with a calm, focused feel.'},
+      {title:'Awake', creator:'Tycho', year:'2014', reason:'Warm instrumental electronica for long reading or work sessions.'}
+    ]
+  };
+
+  // ---------- state ----------
+  const state = {
+    source:'Books', target:'Movies_and_TV', items:[], userType:'cold',
+    strategy:'standard', model:'llama3:8b', k:3, temperature:0.7,
+    connected:false, demo:false
+  };
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // ---------- domain pickers ----------
+  function renderDomains(){
+    ['src','tgt'].forEach(side => {
+      const el = $(side + 'Domains');
+      const current = side === 'src' ? state.source : state.target;
+      const other = side === 'src' ? state.target : state.source;
+      el.innerHTML = Object.entries(DOMAINS).map(([key,d]) =>
+        `<button class="dom ${key===current?'on':''}" data-key="${key}" ${key===other?'disabled':''}>${ICONS[d.icon]}<span>${d.label}</span></button>`
+      ).join('');
+      el.querySelectorAll('.dom').forEach(b => b.onclick = () => {
+        if (side === 'src') state.source = b.dataset.key; else state.target = b.dataset.key;
+        renderDomains();
+      });
+    });
+    $('itemsLabel').textContent = `Liked ${DOMAINS[state.source].label} items`;
+  }
+
+  // ---------- items ----------
+  function renderChips(){
+    const el = $('chips');
+    if (!state.items.length){ el.innerHTML = '<div class="empty">No items yet.</div>'; return; }
+    el.innerHTML = state.items.map((it,i) =>
+      `<span class="chip">${esc(it.title)} <span class="stars">★${it.rating}</span><button aria-label="Remove" data-i="${i}">×</button></span>`
+    ).join('');
+    el.querySelectorAll('button').forEach(b => b.onclick = () => { state.items.splice(+b.dataset.i,1); renderChips(); });
+  }
+  function addItem(){
+    const v = $('itemInput').value.trim();
+    if (!v) return;
+    if (state.items.some(i => i.title.toLowerCase() === v.toLowerCase())) { $('itemInput').value=''; return; }
+    state.items.push({title:v, rating:+$('ratingInput').value});
+    $('itemInput').value = '';
+    renderChips();
+  }
+  $('addBtn').onclick = addItem;
+  $('itemInput').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); addItem(); }});
+  $('clearBtn').onclick = () => { state.items = []; renderChips(); };
+  document.querySelectorAll('[data-sample]').forEach(b => b.onclick = () => {
+    const s = SAMPLES[b.dataset.sample];
+    state.source = s.source; state.target = s.target; state.userType = s.userType;
+    state.items = s.items.map(x => ({...x}));
+    setSeg('userSeg', s.userType);
+    renderDomains(); renderChips();
+  });
+
+  // ---------- segmented controls ----------
+  function setSeg(id, v){ $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
+  function bindSeg(id, key){
+    $(id).querySelectorAll('button').forEach(b => b.onclick = () => { state[key] = b.dataset.v; setSeg(id, b.dataset.v); });
+  }
+  bindSeg('userSeg','userType'); bindSeg('stratSeg','strategy');
+
+  $('modelSel').onchange = e => state.model = e.target.value;
+  $('kSel').onchange = e => state.k = +e.target.value;
+  $('temp').oninput = e => { state.temperature = +e.target.value; $('tempVal').textContent = state.temperature.toFixed(1); };
+  $('demoToggle').onchange = e => { state.demo = e.target.checked; updateStatus(); };
+
+  // ---------- prompts (mirrors prompts/prompt_templates.py) ----------
+  function buildPrompt(){
+    const src = DOMAINS[state.source], tgt = DOMAINS[state.target];
+    const history = state.items.map(i => `- ${i.title} (rated ${i.rating}/5)`).join('\n');
+    const userNote = state.userType === 'cold'
+      ? 'This is a cold-start user with a short history. Focus on the strongest signals that transfer across domains.'
+      : 'This is a warm user with a long history. Look for consistent patterns across many items.';
+    const output =
+`Recommend exactly ${state.k} real ${tgt.label} items (each a ${tgt.noun}). Do not recommend anything the user already listed.
+Return only valid JSON in this exact shape:
+{"reasoning": "short summary of the user's taste", "recommendations": [{"title": "...", "creator": "author, director or artist", "year": "...", "reason": "one or two sentences", "based_on": ["titles from the user's history that led to this pick"]}]}`;
+
+    if (state.strategy === 'standard') {
+      return `Based on the user's preferences in ${src.label}, generate personalised recommendations for items from ${tgt.label}.
+
+${userNote}
+
+User's highly-rated ${src.label} items:
+${history}
+
+${output}`;
+    }
+    if (state.strategy === 'fewshot') {
+      return `You recommend items across domains by matching themes, tone and style.
+
+Example 1
+User's highly-rated Books: The Hobbit (5/5), A Wizard of Earthsea (5/5)
+Recommendations in Movies & TV:
+1. Spirited Away (Hayao Miyazaki, 2001). Coming-of-age journey through a magical world, like both books.
+2. The Princess Bride (Rob Reiner, 1987). Light-hearted fantasy adventure with a classic quest structure.
+
+Example 2
+User's highly-rated Movies & TV: The Godfather (5/5), Heat (4/5)
+Recommendations in Books:
+1. The Power of the Dog (Don Winslow, 2005). Sprawling crime saga about loyalty and family.
+2. Red Harvest (Dashiell Hammett, 1929). Hard-edged crime story with morally grey characters.
+
+Now your task.
+${userNote}
+
+User's highly-rated ${src.label} items:
+${history}
+
+${output}`;
+    }
+    return `You are an expert recommendation system. Analyse the user's preferences step by step.
+
+Step 1: Analyse patterns in the user's ${src.label} preferences (themes, tone, pacing, genre, audience).
+Step 2: Identify which of these preferences transfer to ${tgt.label}.
+Step 3: Recommend ${state.k} ${tgt.label} items that match these patterns.
+
+${userNote}
+
+User's highly-rated ${src.label} items:
+${history}
+
+Put your step-by-step analysis in the "reasoning" field, then give the picks.
+${output}`;
+  }
+
+  // ---------- ollama ----------
+  const baseUrl = () => $('ollamaUrl').value.trim().replace(/\/+$/,'');
+
+  async function checkOllama(){
+    $('statusText').textContent = 'Checking Ollama…';
+    $('statusDot').className = 'dot';
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    try {
+      const r = await fetch(baseUrl() + '/api/tags', {signal:ctrl.signal});
+      if (!r.ok) throw new Error();
+      const data = await r.json();
+      const names = (data.models || []).map(m => m.name);
+      state.connected = true;
+      if (names.length){
+        const sel = $('modelSel');
+        const prev = sel.value;
+        sel.innerHTML = names.map(n => `<option>${esc(n)}</option>`).join('');
+        const pick = names.find(n => n === prev) || names.find(n => n.startsWith('llama3')) || names[0];
+        sel.value = pick; state.model = pick;
+      }
+    } catch { state.connected = false; }
+    finally { clearTimeout(t); }
+    if (!state.connected){ state.demo = true; $('demoToggle').checked = true; }
+    updateStatus();
+  }
+  function updateStatus(){
+    const live = state.connected && !state.demo;
+    $('statusDot').className = 'dot' + (live ? ' ok' : '');
+    $('statusText').textContent = live ? 'Ollama connected'
+      : state.connected ? 'Demo mode (Ollama available)' : 'Demo mode (Ollama not found)';
+  }
+  $('checkBtn').onclick = () => { state.demo = false; $('demoToggle').checked = false; checkOllama(); };
+
+  async function callOllama(prompt){
+    const r = await fetch(baseUrl() + '/api/generate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:state.model, prompt, stream:false, format:'json',
+        options:{ temperature:state.temperature, num_predict:900 } })
+    });
+    if (!r.ok) throw new Error(`Ollama returned ${r.status}. Is "${state.model}" pulled?`);
+    const data = await r.json();
+    return data.response;
+  }
+
+  function demoResponse(){
+    const pool = DEMO[state.target];
+    const titles = state.items.map(i => i.title);
+    const recs = pool.slice(0, state.k).map((p,i) => ({
+      ...p, based_on: titles.length ? [titles[i % titles.length], titles[(i+1) % titles.length]].filter((v,j,a)=>a.indexOf(v)===j) : []
+    }));
+    const reasoning = state.strategy === 'cot'
+      ? `Step 1: The ${DOMAINS[state.source].label} history leans toward smart, idea-driven stories with tension and a strong central problem.\nStep 2: Those traits carry over to ${DOMAINS[state.target].label} as a preference for thoughtful, atmospheric work over light entertainment.\nStep 3: Picks below match on theme and tone rather than surface genre.`
+      : `The user favours thoughtful, idea-driven work with real tension. Picks focus on matching tone and themes in ${DOMAINS[state.target].label}.`;
+    return JSON.stringify({reasoning, recommendations:recs});
+  }
+
+  // ---------- run ----------
+  let lastRun = null;
+  $('goBtn').onclick = async () => {
+    if (!state.items.length){ showError('Add at least one item you liked, or load a sample user.'); return; }
+    const prompt = buildPrompt();
+    const live = state.connected && !state.demo;
+    $('goBtn').disabled = true; $('goBtn').textContent = 'Generating…';
+    $('results').innerHTML = `<div class="placeholder"><div class="spinner"></div><h4>${live ? 'Asking ' + esc(state.model) : 'Building demo output'}</h4><p>${live ? 'Local models can take a little while, especially the 70B one.' : 'Sample results, no model call.'}</p></div>`;
+    const t0 = performance.now();
+    let raw;
+    try {
+      raw = live ? await callOllama(prompt) : await new Promise(r => setTimeout(() => r(demoResponse()), 900));
+      const ms = performance.now() - t0;
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch { throw Object.assign(new Error('The model did not return valid JSON.'), {raw}); }
+      lastRun = {prompt, raw, parsed, ms, live, model:state.model, strategy:state.strategy};
+      renderResults(lastRun);
+    } catch (e) {
+      showError(e.message || 'Could not reach Ollama. Check the connection settings.', e.raw, prompt);
+    } finally {
+      $('goBtn').disabled = false; $('goBtn').textContent = 'Generate recommendations';
+    }
+  };
+
+  const STRAT_LABEL = {standard:'Standard', fewshot:'Few-shot', cot:'Chain-of-thought'};
+
+  function renderResults(run){
+    const recs = Array.isArray(run.parsed.recommendations) ? run.parsed.recommendations : [];
+    const src = DOMAINS[state.source].label, tgt = DOMAINS[state.target].label;
+    $('results').innerHTML = `
+      <div class="reshead">
+        <h3>${esc(src)} → ${esc(tgt)}</h3>
+        <div class="meta">
+          <span class="tag ${run.live ? 'live' : 'demo'}">${run.live ? 'Live' : 'Demo output'}</span>
+          <span class="tag mono">${esc(run.model)}</span>
+          <span class="tag">${STRAT_LABEL[run.strategy]}</span>
+          <span class="tag mono">${(run.ms/1000).toFixed(1)}s</span>
+        </div>
+      </div>
+      ${recs.length ? recs.map((r,i) => `
+        <div class="rec">
+          <div class="num">${i+1}</div>
+          <div>
+            <h4>${esc(r.title)}</h4>
+            <div class="by">${esc([r.creator, r.year].filter(Boolean).join(' · '))}</div>
+            <p>${esc(r.reason)}</p>
+            ${(r.based_on||[]).length ? `<div class="because">Because you liked ${r.based_on.map(b => `<span class="src">${esc(b)}</span>`).join('')}</div>` : ''}
+          </div>
+        </div>`).join('') : '<div class="error">The model replied, but no recommendations were found in its output. Check the raw response below.</div>'}
+      ${run.parsed.reasoning ? `<details class="box" ${run.strategy==='cot'?'open':''}><summary>Model reasoning</summary><div class="inner">${esc(run.parsed.reasoning)}</div></details>` : ''}
+      <details class="box"><summary>Prompt sent to the model</summary><pre class="mono">${esc(run.prompt)}</pre></details>
+      <details class="box"><summary>Raw JSON response</summary><pre class="mono">${esc(JSON.stringify(run.parsed, null, 2))}</pre></details>
+      <div class="actions">
+        <button class="btn small" id="copyJson">Copy JSON</button>
+        <button class="btn small" id="dlJson">Download result</button>
+      </div>`;
+    $('copyJson').onclick = async e => {
+      try { await navigator.clipboard.writeText(JSON.stringify(run.parsed, null, 2)); e.target.textContent = 'Copied'; }
+      catch { e.target.textContent = 'Copy failed'; }
+      setTimeout(() => e.target.textContent = 'Copy JSON', 1500);
+    };
+    $('dlJson').onclick = () => {
+      const payload = {source_domain:state.source, target_domain:state.target, user_type:state.userType,
+        model:run.model, strategy:run.strategy, temperature:state.temperature, latency_s:+(run.ms/1000).toFixed(2),
+        user_history:state.items, output:run.parsed};
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'}));
+      a.download = `llamarec_${state.source}_to_${state.target}.json`;
+      a.click(); URL.revokeObjectURL(a.href);
+    };
+  }
+
+  function showError(msg, raw, prompt){
+    $('results').innerHTML = `<div class="error">${esc(msg)}</div>
+      ${raw ? `<details class="box" open><summary>Raw model output</summary><pre class="mono">${esc(raw)}</pre></details>` : ''}
+      ${prompt ? `<details class="box"><summary>Prompt sent to the model</summary><pre class="mono">${esc(prompt)}</pre></details>` : ''}`;
+  }
+
+  // ---------- init ----------
+  renderDomains(); renderChips(); checkOllama();
+})();
+</script>
+</body>
+</html>
