@@ -1,0 +1,26 @@
+# Data (large; download/regenerate locally - see README)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Environments
+venv/
+.venv/
+env/
+.env
+
+# Generated evaluation output
+baseline_evaluation/
+evaluation_results/
+*.log
+logs/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

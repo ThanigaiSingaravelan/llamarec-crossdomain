@@ -1,9 +1,12 @@
 # utils/error_handling.py
 import logging
+import os
 import traceback
 from functools import wraps
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, Callable, Set
 from enum import Enum
+
+import pandas as pd
 
 
 class ErrorLevel(Enum):

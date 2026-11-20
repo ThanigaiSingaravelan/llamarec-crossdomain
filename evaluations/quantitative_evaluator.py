@@ -19,7 +19,7 @@ import warnings
 import os
 
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".llamarec.")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 warnings.filterwarnings('ignore')
 logging.basicConfig(level=logging.INFO)

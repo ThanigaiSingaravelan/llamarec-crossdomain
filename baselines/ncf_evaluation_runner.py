@@ -11,15 +11,7 @@ import os
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-try:
-    from baselines.neural_cf import evaluate_ncf_with_ground_truth
-except ImportError:
-    try:
-        from neural_cf import evaluate_ncf_with_ground_truth
-    except ImportError:
-        print("❌ Could not import NCF evaluation function")
-        print("Make sure neural_cf.py is in the baselines directory")
-        sys.exit(1)
+from baselines.neural_cf import evaluate_ncf_with_ground_truth  # noqa: E402
 
 
 def main():

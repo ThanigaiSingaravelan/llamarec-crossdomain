@@ -1,0 +1,19 @@
+# LLAMAREC runtime dependencies
+# Install: pip install -r requirements.txt
+# The LLM itself runs in Ollama (https://ollama.com), installed separately.
+
+# Core
+numpy>=1.24
+pandas>=2.0
+scipy>=1.11
+tqdm>=4.66
+requests>=2.31
+
+# Baselines (NCF / content-based)
+scikit-learn>=1.3
+torch>=2.1
+
+# Evaluation and statistics
+statsmodels>=0.14
+matplotlib>=3.8
+seaborn>=0.13

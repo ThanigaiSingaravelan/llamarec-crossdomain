@@ -9,9 +9,10 @@
 
 <br>
 
-![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+[![CI](https://img.shields.io/github/actions/workflow/status/ThanigaiSingaravelan/llamarec-crossdomain/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/ThanigaiSingaravelan/llamarec-crossdomain/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-Local_LLMs-000000?style=for-the-badge&logo=ollama&logoColor=white)
-![Llama 3](https://img.shields.io/badge/Llama_3-8B_|_70B-0467DF?style=for-the-badge&logo=meta&logoColor=white)
+![Llama 3](https://img.shields.io/badge/Llama_3-8B-0467DF?style=for-the-badge&logo=meta&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-NCF_Baseline-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)
 
@@ -91,13 +92,15 @@ flowchart LR
 <br>
 
 ```
-llamarec/
-├── data/
-│   ├── amazon_raw/                       # Raw Amazon review files go here
+llamarec-crossdomain/
+├── app.py                                # Single entry point: python app.py <command>
+├── requirements.txt                      # Runtime dependencies
+├── requirements-dev.txt                  # + pytest, black, flake8
+├── pytest.ini
+├── data/                                 # Not in git (large) - created by preprocessing
+│   ├── raw/                              # Raw Amazon review files go here
 │   ├── processed/                        # CSVs created by amazon_collector
-│   └── splits/                           # Cross-domain, cold, warm, train and test splits
-├── models/
-│   └── neural_cf.py                      # Neural Collaborative Filtering
+│   └── splits/                           # Cross-domain, cold/warm, train/test, k-fold splits
 ├── preprocessing/
 │   ├── amazon_collector.py               # Loads and cleans the Amazon data
 │   ├── domain_preprocessor.py            # Finds users active in several domains
@@ -108,22 +111,28 @@ llamarec/
 ├── runners/
 │   ├── run_ollama_llamarec.py            # Main LLAMAREC runner
 │   ├── run_cold_warm_scenarios.py        # Cold vs warm experiments
-│   └── evaluation_runner.py              # Automated evaluation
+│   ├── run_enhanced_llamarec.py          # Template / model comparison study
+│   ├── evaluation_runner.py              # Automated evaluation
+│   └── baseline_evaluation.py            # LLAMAREC vs baselines
+├── baselines/
+│   ├── neural_cf.py                      # Neural Collaborative Filtering
+│   ├── content_based.py                  # Content-based filtering
+│   └── ncf_evaluation_runner.py
+├── evaluations/
+│   ├── quantitative_evaluator.py         # Main evaluation system
+│   └── advanced_statistics.py            # Significance tests, effect sizes
+├── experiments/
+│   └── advanced_experimental_designs.py  # Factorial and ablation designs
 ├── testers/
 │   ├── interactive_llamarec_tester.py    # Interactive demo
-│   ├── run_enhanced_llamarec.py          # Extended testing
-│   └── test_prompt_generator_cold_warm.py
-├── utils/
-│   ├── llm_utils.py                      # Talking to Ollama
-│   ├── file_utils.py
-│   ├── performance_utils.py
-│   ├── logging_utils.py
-│   └── metrics.py                        # Evaluation metrics
-├── evaluations/
-│   └── quantitative_evaluator.py         # Main evaluation system
-├── baselines/
-│   ├── neural_cf.py                      # NCF baseline
-│   └── ncf_evaluation_runner.py
+│   └── test_prompt_generator_cold_warm.py  # Cold/warm prompt harness (used by runners)
+├── utils/                                # Ollama client, metrics, logging, file helpers
+├── scripts/
+│   └── ollama_chat.py                    # Quick Ollama connection / chat check
+├── tests/                                # pytest unit tests
+├── results/                              # Saved experiment outputs (JSON / reports)
+├── docs/
+│   └── index.html                        # Project web page
 └── README.md
 ```
 
@@ -137,7 +146,7 @@ llamarec/
 
 | | Minimum | Recommended |
 |---|---|---|
-| **Python** | 3.8 | 3.10+ |
+| **Python** | 3.10 | 3.12 |
 | **RAM** | 8 GB | 16 GB for full datasets |
 | **Storage** | About 100 GB for processed data | |
 | **CPU** | Multi-core | Multi-core (parallel processing is supported) |
@@ -148,8 +157,8 @@ llamarec/
 ### 1 · Install
 
 ```bash
-git clone https://github.com/ThanigaiSingaravelan/llamrec.git
-cd llamrec
+git clone https://github.com/ThanigaiSingaravelan/llamarec-crossdomain.git
+cd llamarec-crossdomain
 
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
@@ -165,49 +174,50 @@ ollama pull llama3:70b          # optional, for comparison
 ollama serve
 ```
 
-Then check the connection:
+Then check Ollama, the model and the data folders:
 
 ```bash
-python ollama_api.py
+python app.py check
 ```
 
 ### 3 · Prepare the data
 
-Download the Amazon review files (Books, Movies & TV, CDs, Digital Music) and place them in `data/raw/`.
+Download the Amazon review files (Books, Movies & TV, CDs & Vinyl, Digital Music) and place them in `data/raw/`. The `data/` folder is git-ignored.
 
 ```bash
-# Clean and convert the raw files
-python preprocessing/amazon_collector.py --base_path data/raw --output_dir data/processed
+# All three steps: clean raw files -> build cross-domain profiles -> create splits
+python app.py preprocess all
 
-# Build cross-domain user profiles
-python preprocessing/domain_preprocessor.py --base_path data/processed --output_path data/splits
-
-# Create the splits
-python preprocessing/data_splitter.py --input_path data/splits --output_path data/splits
+# Or one step at a time
+python app.py preprocess collect     # data/raw       -> data/processed
+python app.py preprocess profile     # data/processed -> data/splits (user_history.json, cold/warm users)
+python app.py preprocess split       # data/splits    -> train/test, cold-start, k-fold splits
 ```
 
 ### 4 · Run it
 
 ```bash
+# One recommendation for a random eligible user (or pass --user <id>)
+python app.py recommend --source Books --target Movies_and_TV
+
 # Try it interactively
-python testers/interactive_llamarec_tester.py
+python app.py interactive
 
 # Cold vs warm comparison
-python runners/run_cold_warm_scenarios.py --mode comparative
+python app.py coldwarm --mode comparative --max-users 10
 
 # Standard run
-python runners/run_ollama_llamarec.py
+python app.py run
 ```
+
+Run `python app.py --help` for every command. Options after a command are passed to the underlying script, e.g. `python app.py coldwarm --help`.
 
 ### 5 · Evaluate
 
 ```bash
-python runners/evaluation_runner.py
-
-python baselines/ncf_evaluation_runner.py \
-    --dataset data/splits/Books_filtered.csv \
-    --user_history data/splits/user_history.json \
-    --domain Books
+python app.py evaluate --batch --results-dir results
+python app.py ncf --domain Books
+python app.py baselines
 ```
 
 ---
@@ -366,7 +376,7 @@ required_n = stats.power_analysis(effect_size=0.5, power=0.8)
 | 🧊 **Cold-start users** | LLAMAREC did best for users with little history, which is where traditional methods tend to struggle. |
 | 🔀 **Strongest transfers** | Books ↔ Movies and Music ↔ Books had the highest transfer success rates. |
 | 💬 **Explanations** | Over 95% of recommendations came with a clear reason tied to the user's source preferences. |
-| 🔥 **Warm users** | Warm users got recommendations rated 15 to 20% higher in quality on average. |
+| 🔥 **Warm vs cold** | In the `llama3.1:8b` study (33 users, 39 prompts) warm users scored 3.83 vs 3.74 for cold users on the 5-point heuristic quality score. The difference was not statistically significant (t = −0.97, p = 0.34); see [results/cold_warm_study_report_20250530_111755.txt](results/cold_warm_study_report_20250530_111755.txt). |
 
 ---
 
@@ -390,15 +400,15 @@ required_n = stats.power_analysis(effect_size=0.5, power=0.8)
 
 ## 🤝 Contributing
 
-Contributions are welcome. Please read the [Contributing Guidelines](CONTRIBUTING.md) first.
+Contributions are welcome. Open an issue or pull request.
 
 ```bash
 pip install -r requirements-dev.txt
 
-python -m pytest tests/
+python app.py test          # or: python -m pytest
 
-black llamarec/
-flake8 llamarec/
+black .
+flake8 .
 ```
 
 ---
@@ -414,7 +424,7 @@ If LLAMAREC helps your research, please cite it:
   school = {De Montfort University},
   year   = {2025},
   type   = {MSc Dissertation},
-  note   = {Supervised by Dr Aboozar Taherkhani. Available at https://github.com/ThanigaiSingaravelan/llamrec}
+  note   = {Supervised by Dr Aboozar Taherkhani. Available at https://github.com/ThanigaiSingaravelan/llamarec-crossdomain}
 }
 ```
 
