@@ -30,7 +30,7 @@ def test_static_assets(client):
 
 def test_health(client):
     data = client.get("/api/health").get_json()
-    assert data == {"status": "ok", "users": 7, "domains": ["Books", "Movies_and_TV"]}
+    assert data == {"status": "ok", "users": 8, "domains": ["Books", "Movies_and_TV"]}
 
 
 def test_health_without_data(empty_client):
@@ -41,7 +41,7 @@ def test_health_without_data(empty_client):
 
 def test_domains(client):
     data = client.get("/api/domains").get_json()
-    assert data["Books"]["users"] == 7
+    assert data["Books"]["users"] == 8
 
 
 def test_users_paging_and_random(client):

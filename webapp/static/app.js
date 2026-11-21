@@ -243,8 +243,11 @@ async function openFromHash() {
   const h = decodeURIComponent(location.hash.slice(1));
   if (h.startsWith("user=")) {
     showTab("user"); $("#userId").value = h.slice(5); recommendUser();
-  } else if (h === "evaluate") {
-    showTab("evaluate"); $("#runEval").click();
+  } else if (h === "evaluate" || h.startsWith("evaluate=")) {
+    showTab("evaluate");
+    const n = parseInt(h.split("=")[1], 10);
+    if (n) $("#nUsers").value = n;
+    $("#runEval").click();
   } else if (["taste", "api"].includes(h)) {
     showTab(h);
   }

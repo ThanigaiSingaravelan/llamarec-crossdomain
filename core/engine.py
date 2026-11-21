@@ -11,6 +11,7 @@ Built entirely from data/splits/user_history.json.
 """
 import html
 import random
+import re
 from collections import Counter, defaultdict
 from typing import Dict, Iterable, List, Optional, Set
 
@@ -41,6 +42,8 @@ class CrossDomainEngine:
                     if not asin:
                         continue
                     title = item.get("title") if isinstance(item, dict) else None
+                    if _is_placeholder(title):
+                        continue  # dataset test/placeholder entries, not real products
                     self.titles[domain].setdefault(asin, _clean_title(title, asin))
                     self.liked_by[domain][asin].add(uid)
                     asins.append(asin)
@@ -218,3 +221,11 @@ def _clean_title(title, asin: str) -> str:
     if not isinstance(title, str) or not title.strip() or title.strip().lower() == "nan":
         return asin
     return html.unescape(title).strip()
+
+
+# Placeholder products found in the Amazon data, e.g. "Test Big Data 1737" (liked by 130 users).
+_PLACEHOLDER = re.compile(r"^\s*(test big data \d+|unknown)\s*$", re.IGNORECASE)
+
+
+def _is_placeholder(title) -> bool:
+    return isinstance(title, str) and bool(_PLACEHOLDER.match(html.unescape(title)))

@@ -15,8 +15,16 @@ def titles(result):
 
 def test_index_and_stats(engine):
     assert engine.domains == ["Books", "Movies_and_TV"]
-    assert engine.domain_stats()["Books"]["users"] == 7
+    assert engine.domain_stats()["Books"]["users"] == 8
+    # u8 only liked placeholder films, so has no usable Movies_and_TV likes
     assert set(engine.users("Books", "Movies_and_TV")) == {f"u{i}" for i in range(1, 8)}
+
+
+def test_placeholder_products_are_ignored(engine):
+    assert "MX" not in engine.titles["Movies_and_TV"]
+    assert "MY" not in engine.titles["Movies_and_TV"]
+    recs = engine.recommend("Books", "Movies_and_TV", ["B1"], k=10)["recommendations"]
+    assert not {"Test Big Data 1737", "Unknown"} & {r["title"] for r in recs}
 
 
 def test_titles_are_cleaned(engine):

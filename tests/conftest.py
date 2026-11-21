@@ -21,4 +21,6 @@ def history():
         "u5": {"Books": _likes(gone_b), "Movies_and_TV": _likes(gone_m)},
         "u6": {"Books": _likes(("B4", "Cookbook")), "Movies_and_TV": _likes(blockbuster)},
         "u7": {"Books": _likes(lotr_b, ("B5", "nan")), "Movies_and_TV": _likes(lotr_m, ("M5", "Tom &amp; Jerry"))},
+        # placeholder products that exist in the real Amazon data; must be ignored
+        "u8": {"Books": _likes(lotr_b), "Movies_and_TV": _likes(("MX", "Test Big Data 1737"), ("MY", "Unknown"))},
     }

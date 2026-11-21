@@ -29,10 +29,10 @@ Tell it the books someone loves, and it suggests films they're likely to enjoy, 
 
 | | |
 |---|---|
-| 🔀 **Books ⇄ Movies & TV** | Built from **10,442 Amazon users** who rated items in both domains: 15,683 books and 19,304 films and TV titles. |
+| 🔀 **Books ⇄ Movies & TV** | Built from **10,442 Amazon users** who rated items in both domains: 15,683 books and 19,300 films and TV titles. |
 | 💬 **Every pick is explained** | *"11 users who liked 'Outliers' also liked this"*, plus a bar showing how many users support it. |
 | 🆕 **Works for new users** | Pick a few titles you like and get recommendations straight away. |
-| 📊 **Honestly evaluated** | Leave-one-user-out testing against a popularity baseline: **+43% hit rate** for Books → Movies & TV. |
+| 📊 **Honestly evaluated** | Leave-one-user-out testing against a popularity baseline: **+45% hit rate** for Books → Movies & TV. |
 | ⚡ **Light and local** | No GPU, no LLM, no API keys. Loads in about a second and runs entirely on your machine. |
 
 <br>
@@ -107,12 +107,12 @@ Each test user's own ratings are **hidden**. The engine recommends from what the
 
 | Direction | Method | Hit rate | Precision | Recall | NDCG |
 |---|---|---:|---:|---:|---:|
-| Books → Movies & TV | **Co-occurrence** | **25.3%** | **0.045** | **0.034** | **0.057** |
+| Books → Movies & TV | **Co-occurrence** | **25.7%** | **0.046** | **0.035** | **0.058** |
 | | Popularity | 17.7% | 0.030 | 0.023 | 0.038 |
-| Movies & TV → Books | **Co-occurrence** | **24.3%** | **0.042** | **0.036** | **0.054** |
+| Movies & TV → Books | **Co-occurrence** | **24.3%** | **0.042** | **0.036** | **0.053** |
 | | Popularity | 21.0% | 0.034 | 0.036 | 0.049 |
 
-About **1 user in 4** finds something they genuinely liked in their top 10, based only on their ratings in the *other* domain. The gain over popularity is clear for Books → Movies & TV (+43%) and smaller in the reverse direction (+16%).
+About **1 user in 4** finds something they genuinely liked in their top 10, based only on their ratings in the *other* domain. The gain over popularity is clear for Books → Movies & TV (+45%) and smaller in the reverse direction (+16%).
 
 <sub>Reproduce with `python app.py evaluate-engine --k 10 --n 300`, or the **Evaluate** tab in the app. Hit rate is the share of users with at least one liked item in their top 10.</sub>
 
@@ -207,7 +207,7 @@ llamarec-crossdomain/
 
 ```bash
 pip install -r requirements-dev.txt
-python app.py test     # 51 tests: engine, API, metrics, imports
+python app.py test     # 52 tests: engine, API, metrics, imports
 flake8 .
 ```
 
