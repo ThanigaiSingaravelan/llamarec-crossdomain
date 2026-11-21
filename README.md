@@ -2,187 +2,135 @@
 
 # 🦙 LLAMAREC
 
-### Cross-Domain Recommendations from Real User Ratings
+**Cross-domain recommendations from real people's ratings.**<br>
+Tell it the books someone loves, and it suggests films they're likely to enjoy, or the other way round, with a reason for every pick.
 
-*Recommend a film from someone's bookshelf. Recommend a book from their watchlist.*<br>
-*Runs on your own machine, with an explanation for every pick.*
+[![CI](https://img.shields.io/github/actions/workflow/status/ThanigaiSingaravelan/llamarec-crossdomain/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/ThanigaiSingaravelan/llamarec-crossdomain/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/flask-web%20app%20%2B%20API-000000?style=flat-square&logo=flask&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)
+
+[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Results](#-results) · [API](#-api) · [Project layout](#-project-layout) · [Citation](#-citation)
 
 <br>
 
-[![CI](https://img.shields.io/github/actions/workflow/status/ThanigaiSingaravelan/llamarec-crossdomain/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/ThanigaiSingaravelan/llamarec-crossdomain/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-Web_UI_+_API-000000?style=for-the-badge&logo=flask&logoColor=white)
-![PyTorch](https://img.shields.io/badge/PyTorch-NCF_Baseline-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/discover-dark.png">
+  <img src="docs/images/discover.png" alt="LLAMAREC web app showing film recommendations for a reader, each with a reason and a support bar" width="900">
+</picture>
 
-**MSc Artificial Intelligence Dissertation · De Montfort University · 2025**
-
-[Overview](#-overview) · [How It Works](#-how-it-works) · [Quick Start](#-quick-start) · [Web App & API](#-web-app--api) · [Evaluation](#-evaluation) · [Results](#-results) · [Citation](#-citation)
+<sub>MSc Artificial Intelligence dissertation project · De Montfort University · 2025</sub>
 
 </div>
 
----
+<br>
 
-## 📖 Overview
+## ✨ At a glance
 
-Most recommendation systems stay inside one category. If you have rated a hundred books, a typical system can suggest more books, but it has very little to say about which films you might enjoy.
-
-LLAMAREC closes that gap using **10,442 real Amazon users who rated both Books and Movies & TV**. Give it what someone liked in one domain and it recommends items from the other, each with a reason such as *"11 users who liked 'Holes' also liked this"*.
-
-It ships as a **Flask web app with a JSON API**. It needs no GPU, no LLM and no internet connection, and starts in about a second.
-
-> **Data:** 10,442 users, 15,683 books and 19,304 films and TV titles, from the [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023) dataset.
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### 🔀 Cross-domain transfer
-Books → Movies & TV and Movies & TV → Books, from real overlapping users.
-
-### 💬 Explainable picks
-Every recommendation names the liked item that led to it and how many users support it.
-
-### 🆕 Cold start
-New users can pick a few titles they like; with no overlap it falls back to popular items.
-
-</td>
-<td width="50%" valign="top">
-
-### 🌐 Web UI + API
-Recommend for a user, build your own taste, and run evaluations from the browser or over HTTP.
-
-### 📊 Honest evaluation
-Leave-one-user-out Precision, Recall, NDCG, hit rate and diversity, compared with a popularity baseline.
-
-### 🔒 Private by design
-Everything runs locally. No user data is sent to any external service.
-
-</td>
-</tr>
-</table>
-
----
-
-## ⚙️ How It Works
-
-```mermaid
-flowchart LR
-    A[(Amazon Reviews<br>2023)] --> B[Preprocessing]
-    B --> C[user_history.json<br>users in both domains]
-    C --> D[Cross-domain engine<br>co-occurrence]
-    D --> E[Recommendations<br>+ explanations]
-    E --> F[Flask UI / JSON API]
-    D --> G[Leave-one-user-out<br>evaluation]
-```
-
-1. **Collect.** Amazon review data is cleaned and converted to CSV.
-2. **Profile.** Users who rated items in both domains are found; their liked items are saved to `data/splits/user_history.json`.
-3. **Recommend.** For each item you liked in the source domain, the engine finds other users who liked it and counts what *they* liked in the target domain. Scores are lightly damped by popularity, and each pick keeps the source item that contributed most to it, which becomes its explanation.
-4. **Evaluate.** Each test user's own ratings are hidden, their recommendations are compared with what they really liked, and the same users are scored with a popularity baseline.
-
----
-
-## 🗂️ Project Structure
-
-<details>
-<summary><b>Click to expand the folder layout</b></summary>
+| | |
+|---|---|
+| 🔀 **Books ⇄ Movies & TV** | Built from **10,442 Amazon users** who rated items in both domains: 15,683 books and 19,304 films and TV titles. |
+| 💬 **Every pick is explained** | *"11 users who liked 'Outliers' also liked this"*, plus a bar showing how many users support it. |
+| 🆕 **Works for new users** | Pick a few titles you like and get recommendations straight away. |
+| 📊 **Honestly evaluated** | Leave-one-user-out testing against a popularity baseline: **+43% hit rate** for Books → Movies & TV. |
+| ⚡ **Light and local** | No GPU, no LLM, no API keys. Loads in about a second and runs entirely on your machine. |
 
 <br>
 
-```
-llamarec-crossdomain/
-├── app.py              # Single entry point: python app.py <command>
-├── core/               # Recommender engine, data loading, metrics
-├── webapp/             # Flask web UI + JSON API
-├── preprocessing/      # Raw Amazon data -> processed CSVs -> splits
-├── evaluation/         # NCF + content-based baselines, result-file evaluators
-├── tests/              # pytest suite (runs in CI, no data needed)
-├── results/            # Saved experiment outputs (incl. the earlier LLM study)
-├── docs/               # Project web page (GitHub Pages)
-├── data/               # Not in git - created by preprocessing
-└── .github/workflows/  # CI tests + Pages deploy
-```
-
-</details>
-
----
-
-## 🚀 Quick Start
-
-### Requirements
-
-| | Minimum |
-|---|---|
-| **Python** | 3.10 |
-| **RAM** | 4 GB to run the app, 16 GB to preprocess the full dataset |
-| **Data** | `data/splits/user_history.json` (created by preprocessing) |
-
-> 💡 The dataset is the [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023) collection from McAuley Lab on Hugging Face.
-
-### 1 · Install
+## 🚀 Quick start
 
 ```bash
 git clone https://github.com/ThanigaiSingaravelan/llamarec-crossdomain.git
 cd llamarec-crossdomain
 
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-
+venv\Scripts\activate          # macOS / Linux: source venv/bin/activate
 pip install -r requirements.txt
-python app.py check
+
+python app.py check            # are the packages and data in place?
+python app.py serve            # → http://127.0.0.1:5000
 ```
 
-### 2 · Prepare the data (skip if `data/splits/user_history.json` exists)
+> [!NOTE]
+> The app reads `data/splits/user_history.json`. The data folder isn't in the repository because of its size. To build it, download the **Books** and **Movies & TV** files from [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023) into `data/raw/` and run `python app.py preprocess all`.
 
-Download the Amazon review files (Books, Movies & TV) and place them in `data/raw/`. The `data/` folder is git-ignored.
+<details>
+<summary><b>All commands</b></summary>
 
-```bash
-python app.py preprocess all         # raw -> processed -> splits
-```
+<br>
 
-### 3 · Run the web app
-
-```bash
-python app.py serve
-```
-
-Open **http://127.0.0.1:5000**.
-
-### 4 · Or use the terminal
-
-```bash
-python app.py recommend --source Books --target Movies_and_TV      # random user
-python app.py recommend --user A100FKZWCI9ND6 --num 5
-python app.py evaluate-engine --k 10 --n 300                        # both directions
-python app.py ncf --domain Books                                    # NCF baseline
-python app.py test                                                  # unit tests
-```
-
-Run `python app.py --help` for every command.
-
----
-
-## 🌐 Web App & API
-
-The UI has four tabs:
-
-| Tab | What it does |
+| Command | What it does |
 |---|---|
-| **For a user** | Pick a user ID (or a random one) and see recommendations, plus a reality check of how many picks match what they really liked |
-| **Pick what you like** | Search the catalogue, pick a few titles, get recommendations as a brand-new user |
-| **Evaluate** | Run the leave-one-user-out evaluation against the popularity baseline |
-| **API** | Endpoint reference with clickable examples |
+| `python app.py serve` | Start the web app and JSON API (`--port 5001` to change the port) |
+| `python app.py check` | Check packages and data files |
+| `python app.py recommend` | Recommendations for a random user in the terminal (`--user <id>`, `--source`, `--target`, `--num`) |
+| `python app.py evaluate-engine` | Leave-one-user-out evaluation in both directions (`--k 10 --n 300`) |
+| `python app.py preprocess all` | Raw Amazon files → processed CSVs → `data/splits/` |
+| `python app.py ncf --domain Books` | Train and evaluate the Neural Collaborative Filtering baseline |
+| `python app.py test` | Run the test suite |
 
-| Method | Endpoint | Parameters |
+</details>
+
+<br>
+
+## 🧠 How it works
+
+```mermaid
+flowchart LR
+    A[(Amazon Reviews 2023)] --> B[Preprocess]
+    B --> C[user_history.json<br/>users who rated both domains]
+    C --> D{{Co-occurrence engine}}
+    D --> E[Ranked picks<br/>+ reasons]
+    E --> F[Web app · API · CLI]
+    D --> G[Leave-one-user-out<br/>evaluation]
+```
+
+The idea is *"people who liked these books also liked these films"*:
+
+1. Take every item the user liked in the **source** domain.
+2. Find the other users who liked those same items.
+3. Count what **those** users liked in the **target** domain. More shared fans means a higher score. The score is lightly damped by overall popularity, so the list isn't just blockbusters.
+4. Each pick keeps the source item that contributed most to it. That becomes the explanation.
+5. If someone's tastes don't overlap with anyone, it falls back to the most popular items.
+
+The engine is about 200 lines of plain Python in [`core/engine.py`](core/engine.py).
+
+<br>
+
+## 📊 Results
+
+Each test user's own ratings are **hidden**. The engine recommends from what they liked in one domain, and the list is checked against what they really liked in the other. The same users are scored with a "recommend the most popular items" baseline.
+
+<img src="docs/images/evaluate.png" alt="Evaluation screen: headline hit rate, lift over popularity and per-metric comparison bars" width="900">
+
+**Top 10 recommendations, 300 random users per direction**
+
+| Direction | Method | Hit rate | Precision | Recall | NDCG |
+|---|---|---:|---:|---:|---:|
+| Books → Movies & TV | **Co-occurrence** | **25.3%** | **0.045** | **0.034** | **0.057** |
+| | Popularity | 17.7% | 0.030 | 0.023 | 0.038 |
+| Movies & TV → Books | **Co-occurrence** | **24.3%** | **0.042** | **0.036** | **0.054** |
+| | Popularity | 21.0% | 0.034 | 0.036 | 0.049 |
+
+About **1 user in 4** finds something they genuinely liked in their top 10, based only on their ratings in the *other* domain. The gain over popularity is clear for Books → Movies & TV (+43%) and smaller in the reverse direction (+16%).
+
+<sub>Reproduce with `python app.py evaluate-engine --k 10 --n 300`, or the **Evaluate** tab in the app. Hit rate is the share of users with at least one liked item in their top 10.</sub>
+
+<br>
+
+## 🔌 API
+
+Everything in the web app goes through a small JSON API.
+
+| Method | Endpoint | Purpose |
 |---|---|---|
 | `GET` | `/api/health` | Status, user count, domains |
 | `GET` | `/api/domains` | Items and users per domain |
-| `GET` | `/api/users` | `source`, `target`, `limit`, `offset`, `random` |
+| `GET` | `/api/users?source=&target=&limit=&random=1` | List or sample users |
 | `GET` | `/api/users/<id>` | One user's profile |
-| `GET` | `/api/items/search` | `domain`, `q`, `limit` |
-| `POST` | `/api/recommend` | `{source_domain, target_domain, k, user_id` or `liked_asins, include_known}` |
-| `GET` | `/api/evaluate` | `source`, `target`, `k`, `n` |
+| `GET` | `/api/items/search?domain=&q=` | Search titles |
+| `POST` | `/api/recommend` | Recommendations for a `user_id` or a list of `liked_asins` |
+| `GET` | `/api/evaluate?source=&target=&k=&n=` | Run the evaluation |
 
 ```bash
 curl -X POST http://127.0.0.1:5000/api/recommend \
@@ -190,7 +138,31 @@ curl -X POST http://127.0.0.1:5000/api/recommend \
   -d '{"source_domain": "Movies_and_TV", "target_domain": "Books", "k": 5, "liked_asins": ["B000003KHS"]}'
 ```
 
-The history file location can be changed with the `LLAMAREC_USER_HISTORY` environment variable.
+<details>
+<summary><b>Example response</b></summary>
+
+<br>
+
+```json
+{
+  "source_domain": "Movies_and_TV",
+  "target_domain": "Books",
+  "seeds": [{ "asin": "B000003KHS", "title": "The Godfather VHS" }],
+  "strategy": "co-occurrence",
+  "recommendations": [
+    {
+      "asin": "0099279320",
+      "title": "The GODFATHER / FORTUNATE PILGRIM",
+      "reason": "11 users who liked 'The Godfather VHS' also liked this",
+      "support": 11,
+      "score": 6.9911,
+      "because": { "asin": "B000003KHS", "title": "The Godfather VHS" }
+    }
+  ]
+}
+```
+
+</details>
 
 <details>
 <summary><b>Use the engine from Python</b></summary>
@@ -203,99 +175,69 @@ from core.engine import CrossDomainEngine
 
 engine = CrossDomainEngine(load_user_history("data/splits/user_history.json"))
 
-rec = engine.recommend_for_user("A100FKZWCI9ND6", "Books", "Movies_and_TV", k=5)
-for r in rec["recommendations"]:
-    print(r["title"], "-", r["reason"])
-
-print(engine.evaluate("Books", "Movies_and_TV", k=10, n_users=300)["methods"])
+result = engine.recommend_for_user("A10G4BPT5MGBHY", "Books", "Movies_and_TV", k=5)
+for pick in result["recommendations"]:
+    print(pick["title"], "—", pick["reason"])
 ```
 
 </details>
 
----
+**Shareable links:** `http://127.0.0.1:5000/#user=<id>` opens a user's recommendations directly, and `#evaluate` runs the evaluation.
 
-## 📏 Evaluation
+<br>
 
-The engine is tested with **leave-one-user-out** evaluation: for each sampled user, their own ratings are removed from the data, recommendations are made from what they liked in the source domain, and the list is checked against what they really liked in the target domain.
+## 🗂️ Project layout
 
-| Metric | What it tells you |
-|---|---|
-| Hit rate@K | Share of users with at least one item they really liked in their top K |
-| Precision@K | How many of the top K picks were items they liked |
-| Recall@K | How many of the items they liked were found |
-| NDCG@K | Whether the right items were ranked near the top |
-| Diversity | How different the picks are from each other (title word overlap) |
+```
+llamarec-crossdomain/
+├── app.py            command-line entry point
+├── core/             recommendation engine, data loading, metrics
+├── webapp/           Flask app: JSON API, page, styles, script
+├── preprocessing/    raw Amazon data → processed CSVs → splits
+├── evaluation/       NCF and content-based baselines, result-file evaluators
+├── tests/            pytest suite, runs in CI on a small built-in dataset
+├── results/          saved outputs from the dissertation experiments
+├── docs/             project page and README images
+└── data/             not in git, created by preprocessing
+```
 
-**Baselines:** a popularity baseline is scored on the same users in every evaluation run. Neural Collaborative Filtering (`python app.py ncf`) and content-based filtering are also available in `evaluation/`.
+<br>
 
----
-
-## 🏆 Results
-
-### Data-based engine (this app)
-
-Leave-one-user-out, 300 random users per direction, top 10 recommendations. Reproduce with `python app.py evaluate-engine --k 10 --n 300`.
-
-| Direction | Method | Hit rate@10 | Precision@10 | Recall@10 | NDCG@10 |
-|---|---|---:|---:|---:|---:|
-| Books → Movies & TV | **Co-occurrence** | **0.253** | **0.045** | **0.034** | **0.057** |
-| | Popularity | 0.177 | 0.030 | 0.023 | 0.038 |
-| Movies & TV → Books | **Co-occurrence** | **0.243** | **0.042** | **0.036** | **0.054** |
-| | Popularity | 0.210 | 0.034 | 0.036 | 0.049 |
-
-About one user in four gets at least one item they really liked in their top 10, from their other-domain ratings alone. The gain over popularity is clear for Books → Movies & TV (+43% hit rate) and smaller for Movies & TV → Books (+16%).
-
-### Earlier LLM study (dissertation, `results/`)
-
-The original dissertation prompted a local Llama 3 model. That code has been retired from this repository (it remains in the git history); its saved outputs are in `results/`.
-
-| Finding | Detail |
-|---|---|
-| 💬 **Explanations** | Over 95% of LLM recommendations came with a reason tied to the user's source preferences. |
-| 🔥 **Warm vs cold** | In the `llama3.1:8b` study (33 users, 39 prompts) warm users scored 3.83 vs 3.74 for cold users on the 5-point heuristic quality score. The difference was not statistically significant (t = −0.97, p = 0.34); see [results/cold_warm_study_report_20250530_111755.txt](results/cold_warm_study_report_20250530_111755.txt). |
-
----
-
-## 🛣️ Roadmap
-
-**Done**
-- [x] Web interface (Flask)
-- [x] JSON API for other apps
-- [x] Explainable recommendations
-- [x] Leave-one-user-out evaluation with a popularity baseline
-- [x] Automated tests and CI
-
-**Next**
-- [ ] More domains: CDs & Vinyl and Digital Music are already in `data/processed/`, they need to be added to the profiling step
-- [ ] Use ratings and review text, not just "liked", to weight recommendations
-- [ ] Compare the engine directly with the NCF baseline on the same users
-- [ ] Coverage and novelty metrics
-- [ ] Docker image for one-command deployment
-
-**Research**
-- [ ] Combine co-occurrence with an LLM for richer explanations
-- [ ] Check recommendations for popularity and demographic bias
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome. Open an issue or pull request.
+## 🧪 Development
 
 ```bash
 pip install -r requirements-dev.txt
-
-python app.py test          # or: python -m pytest
+python app.py test     # 51 tests: engine, API, metrics, imports
 flake8 .
 ```
 
-Every push and pull request runs the tests on Python 3.10, 3.11 and 3.12 through GitHub Actions. The tests use a small built-in dataset, so they don't need the Amazon data.
+Every push and pull request runs the tests on Python 3.10, 3.11 and 3.12 with GitHub Actions. The tests use a small hand-made dataset, so they don't need the Amazon data.
 
----
+<br>
+
+## 📜 Background
+
+This started as an MSc dissertation asking whether a large language model (Llama 3, run locally) could transfer a person's taste from one domain to another. The outputs of those experiments are kept in [`results/`](results/). One finding was that warm users (3.83) and cold users (3.74) scored almost the same on the 5-point heuristic quality score (p = 0.34); see the [study report](results/cold_warm_study_report_20250530_111755.txt).
+
+The current version replaces the LLM with a transparent, data-driven engine. It's faster, needs no GPU, and can be measured directly against what real users liked. The LLM code remains in the git history.
+
+<br>
+
+## 🛣️ Roadmap
+
+- [x] Web app and JSON API
+- [x] Explanations and support for every recommendation
+- [x] Leave-one-user-out evaluation with a popularity baseline
+- [x] Automated tests and CI
+- [ ] Add CDs & Vinyl and Digital Music (already in `data/processed/`)
+- [ ] Weight by star rating and review text, not just "liked"
+- [ ] Compare against the NCF baseline on the same users
+- [ ] Coverage and novelty metrics
+- [ ] Docker image
+
+<br>
 
 ## 📚 Citation
-
-If LLAMAREC helps your research, please cite it:
 
 ```bibtex
 @mastersthesis{senthilkumar2025llamarec,
@@ -304,31 +246,22 @@ If LLAMAREC helps your research, please cite it:
   school = {De Montfort University},
   year   = {2025},
   type   = {MSc Dissertation},
-  note   = {Supervised by Dr Aboozar Taherkhani. Available at https://github.com/ThanigaiSingaravelan/llamarec-crossdomain}
+  note   = {Supervised by Dr Aboozar Taherkhani. https://github.com/ThanigaiSingaravelan/llamarec-crossdomain}
 }
 ```
 
----
-
 ## 🙏 Acknowledgements
 
-- **Dr Aboozar Taherkhani** for supervising the project
-- **De Montfort University** for research support and resources
-- **Meta AI** for the Llama 3 model family
-- **McAuley Lab** for the public Amazon Reviews dataset
-
----
+Dr Aboozar Taherkhani for supervising the project · De Montfort University for research support · McAuley Lab for the [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023) dataset · Meta AI for the Llama 3 models used in the original study.
 
 ## 📄 License
 
-This project is released under the [MIT License](LICENSE). You are free to use, change and share the code, as long as you keep the copyright notice.
+[MIT](LICENSE). Use, change and share freely; keep the copyright notice.
 
----
+<br>
 
 <div align="center">
 
-Built by **[Thanigai Singaravelan Senthil Kumar](https://www.linkedin.com/in/than-tsv/)**
-
-⭐ If you found this useful, a star on the repo is always appreciated.
+Built by **[Thanigai Singaravelan Senthil Kumar](https://www.linkedin.com/in/than-tsv/)** · ⭐ Star the repo if you find it useful
 
 </div>
