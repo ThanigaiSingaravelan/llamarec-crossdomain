@@ -2,23 +2,22 @@
 
 # 🦙 LLAMAREC
 
-### Cross-Domain Recommendations with Local Large Language Models
+### Cross-Domain Recommendations from Real User Ratings
 
-*Recommend a film from someone's bookshelf. Recommend an album from their watchlist.*<br>
-*All of it running on your own machine, with an explanation for every pick.*
+*Recommend a film from someone's bookshelf. Recommend a book from their watchlist.*<br>
+*Runs on your own machine, with an explanation for every pick.*
 
 <br>
 
 [![CI](https://img.shields.io/github/actions/workflow/status/ThanigaiSingaravelan/llamarec-crossdomain/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/ThanigaiSingaravelan/llamarec-crossdomain/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Ollama](https://img.shields.io/badge/Ollama-Local_LLMs-000000?style=for-the-badge&logo=ollama&logoColor=white)
-![Llama 3](https://img.shields.io/badge/Llama_3-8B-0467DF?style=for-the-badge&logo=meta&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-Web_UI_+_API-000000?style=for-the-badge&logo=flask&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-NCF_Baseline-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)
 
 **MSc Artificial Intelligence Dissertation · De Montfort University · 2025**
 
-[Overview](#-overview) · [How It Works](#-how-it-works) · [Quick Start](#-quick-start) · [Usage](#-usage) · [Evaluation](#-evaluation) · [Results](#-results) · [Citation](#-citation)
+[Overview](#-overview) · [How It Works](#-how-it-works) · [Quick Start](#-quick-start) · [Web App & API](#-web-app--api) · [Evaluation](#-evaluation) · [Results](#-results) · [Citation](#-citation)
 
 </div>
 
@@ -28,34 +27,34 @@
 
 Most recommendation systems stay inside one category. If you have rated a hundred books, a typical system can suggest more books, but it has very little to say about which films you might enjoy.
 
-LLAMAREC tries to close that gap. It gives a Llama 3 model a user's ratings in one domain, asks it to work out what the person actually likes, and then has it recommend items from a different domain. The model also explains why each item made the list.
+LLAMAREC closes that gap using **10,442 real Amazon users who rated both Books and Movies & TV**. Give it what someone liked in one domain and it recommends items from the other, each with a reason such as *"11 users who liked 'Holes' also liked this"*.
 
-Everything runs locally through [Ollama](https://ollama.com/), so user data never leaves the machine.
+It ships as a **Flask web app with a JSON API**. It needs no GPU, no LLM and no internet connection, and starts in about a second.
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
 ### 🔀 Cross-domain transfer
-Moves preferences between **Books**, **Movies & TV**, **Music** and **CDs**.
-
-### 🔒 Private by design
-Llama 3 runs locally through Ollama. No user history is sent to an external API.
+Books → Movies & TV and Movies & TV → Books, from real overlapping users.
 
 ### 💬 Explainable picks
-Every recommendation comes with a short, readable reason linked to the user's history.
+Every recommendation names the liked item that led to it and how many users support it.
+
+### 🆕 Cold start
+New users can pick a few titles they like; with no overlap it falls back to popular items.
 
 </td>
 <td width="50%" valign="top">
 
-### 🧊 Cold vs warm users
-Compares **cold** users (fewer than 50 interactions) with **warm** users (more than 200).
+### 🌐 Web UI + API
+Recommend for a user, build your own taste, and run evaluations from the browser or over HTTP.
 
-### 🧠 Three prompt strategies
-Standard, few-shot and chain-of-thought prompting, each combined with retrieval.
+### 📊 Honest evaluation
+Leave-one-user-out Precision, Recall, NDCG, hit rate and diversity, compared with a popularity baseline.
 
-### 📊 Proper evaluation
-Precision@K, Recall@K, NDCG, diversity, novelty and coverage, compared against NCF and content-based baselines.
+### 🔒 Private by design
+Everything runs locally. No user data is sent to any external service.
 
 </td>
 </tr>
@@ -68,19 +67,17 @@ Precision@K, Recall@K, NDCG, diversity, novelty and coverage, compared against N
 ```mermaid
 flowchart LR
     A[(Amazon Reviews<br>2023)] --> B[Preprocessing]
-    B --> C[Cross-domain<br>user profiles]
-    C --> D{Cold or warm?}
-    D --> E[Prompt generator<br>standard · few-shot · CoT]
-    E --> F[🦙 Llama 3<br>via Ollama]
-    F --> G[Recommendations<br>+ explanations]
-    G --> H[Evaluator<br>vs NCF baseline]
+    B --> C[user_history.json<br>users in both domains]
+    C --> D[Cross-domain engine<br>co-occurrence]
+    D --> E[Recommendations<br>+ explanations]
+    E --> F[Flask UI / JSON API]
+    D --> G[Leave-one-user-out<br>evaluation]
 ```
 
 1. **Collect.** Amazon review data is cleaned and converted to CSV.
-2. **Profile.** Users who rated items in more than one domain are identified and split into cold and warm groups.
-3. **Prompt.** The user's highly rated items in the source domain are placed into one of three prompt templates.
-4. **Generate.** A local Llama 3 model returns three recommendations for the target domain, each with a reason.
-5. **Evaluate.** Results are scored on ranking quality, diversity and novelty, then compared with traditional baselines.
+2. **Profile.** Users who rated items in both domains are found; their liked items are saved to `data/splits/user_history.json`.
+3. **Recommend.** For each item you liked in the source domain, the engine finds other users who liked it and counts what *they* liked in the target domain. Scores are lightly damped by popularity, and each pick keeps the source item that contributed most to it, which becomes its explanation.
+4. **Evaluate.** Each test user's own ratings are hidden, their recommendations are compared with what they really liked, and the same users are scored with a popularity baseline.
 
 ---
 
@@ -93,47 +90,16 @@ flowchart LR
 
 ```
 llamarec-crossdomain/
-├── app.py                                # Single entry point: python app.py <command>
-├── requirements.txt                      # Runtime dependencies
-├── requirements-dev.txt                  # + pytest, black, flake8
-├── pytest.ini
-├── data/                                 # Not in git (large) - created by preprocessing
-│   ├── raw/                              # Raw Amazon review files go here
-│   ├── processed/                        # CSVs created by amazon_collector
-│   └── splits/                           # Cross-domain, cold/warm, train/test, k-fold splits
-├── preprocessing/
-│   ├── amazon_collector.py               # Loads and cleans the Amazon data
-│   ├── domain_preprocessor.py            # Finds users active in several domains
-│   └── data_splitter.py                  # Builds the data splits
-├── prompts/
-│   ├── prompt_generator.py               # Builds recommendation prompts
-│   └── prompt_templates.py               # Standard, few-shot and CoT templates
-├── runners/
-│   ├── run_ollama_llamarec.py            # Main LLAMAREC runner
-│   ├── run_cold_warm_scenarios.py        # Cold vs warm experiments
-│   ├── run_enhanced_llamarec.py          # Template / model comparison study
-│   ├── evaluation_runner.py              # Automated evaluation
-│   └── baseline_evaluation.py            # LLAMAREC vs baselines
-├── baselines/
-│   ├── neural_cf.py                      # Neural Collaborative Filtering
-│   ├── content_based.py                  # Content-based filtering
-│   └── ncf_evaluation_runner.py
-├── evaluations/
-│   ├── quantitative_evaluator.py         # Main evaluation system
-│   └── advanced_statistics.py            # Significance tests, effect sizes
-├── experiments/
-│   └── advanced_experimental_designs.py  # Factorial and ablation designs
-├── testers/
-│   ├── interactive_llamarec_tester.py    # Interactive demo
-│   └── test_prompt_generator_cold_warm.py  # Cold/warm prompt harness (used by runners)
-├── utils/                                # Ollama client, metrics, logging, file helpers
-├── scripts/
-│   └── ollama_chat.py                    # Quick Ollama connection / chat check
-├── tests/                                # pytest unit tests
-├── results/                              # Saved experiment outputs (JSON / reports)
-├── docs/
-│   └── index.html                        # Project web page
-└── README.md
+├── app.py              # Single entry point: python app.py <command>
+├── core/               # Recommender engine, data loading, metrics
+├── webapp/             # Flask web UI + JSON API
+├── preprocessing/      # Raw Amazon data -> processed CSVs -> splits
+├── evaluation/         # NCF + content-based baselines, result-file evaluators
+├── tests/              # pytest suite (runs in CI, no data needed)
+├── results/            # Saved experiment outputs (incl. the earlier LLM study)
+├── docs/               # Project web page (GitHub Pages)
+├── data/               # Not in git - created by preprocessing
+└── .github/workflows/  # CI tests + Pages deploy
 ```
 
 </details>
@@ -144,15 +110,13 @@ llamarec-crossdomain/
 
 ### Requirements
 
-| | Minimum | Recommended |
-|---|---|---|
-| **Python** | 3.10 | 3.12 |
-| **RAM** | 8 GB | 16 GB for full datasets |
-| **Storage** | About 100 GB for processed data | |
-| **CPU** | Multi-core | Multi-core (parallel processing is supported) |
-| **LLM runtime** | [Ollama](https://ollama.com/) | |
+| | Minimum |
+|---|---|
+| **Python** | 3.10 |
+| **RAM** | 4 GB to run the app, 16 GB to preprocess the full dataset |
+| **Data** | `data/splits/user_history.json` (created by preprocessing) |
 
-> 💡 The dataset is the [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023) collection from McAuley Lab on Hugging Face. Most of the experiments used [`llama3.1:8b`](https://ollama.com/library/llama3.1:8b).
+> 💡 The dataset is the [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023) collection from McAuley Lab on Hugging Face.
 
 ### 1 · Install
 
@@ -164,187 +128,84 @@ python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
 pip install -r requirements.txt
-```
-
-### 2 · Set up Ollama
-
-```bash
-ollama pull llama3:8b
-ollama pull llama3:70b          # optional, for comparison
-ollama serve
-```
-
-Then check Ollama, the model and the data folders:
-
-```bash
 python app.py check
 ```
 
-### 3 · Prepare the data
+### 2 · Prepare the data (skip if `data/splits/user_history.json` exists)
 
-Download the Amazon review files (Books, Movies & TV, CDs & Vinyl, Digital Music) and place them in `data/raw/`. The `data/` folder is git-ignored.
-
-```bash
-# All three steps: clean raw files -> build cross-domain profiles -> create splits
-python app.py preprocess all
-
-# Or one step at a time
-python app.py preprocess collect     # data/raw       -> data/processed
-python app.py preprocess profile     # data/processed -> data/splits (user_history.json, cold/warm users)
-python app.py preprocess split       # data/splits    -> train/test, cold-start, k-fold splits
-```
-
-### 4 · Run it
+Download the Amazon review files (Books, Movies & TV) and place them in `data/raw/`. The `data/` folder is git-ignored.
 
 ```bash
-# One recommendation for a random eligible user (or pass --user <id>)
-python app.py recommend --source Books --target Movies_and_TV
-
-# Try it interactively
-python app.py interactive
-
-# Cold vs warm comparison
-python app.py coldwarm --mode comparative --max-users 10
-
-# Standard run
-python app.py run
+python app.py preprocess all         # raw -> processed -> splits
 ```
 
-Run `python app.py --help` for every command. Options after a command are passed to the underlying script, e.g. `python app.py coldwarm --help`.
-
-### 5 · Evaluate
+### 3 · Run the web app
 
 ```bash
-python app.py evaluate --batch --results-dir results
-python app.py ncf --domain Books
-python app.py baselines
+python app.py serve
 ```
+
+Open **http://127.0.0.1:5000**.
+
+### 4 · Or use the terminal
+
+```bash
+python app.py recommend --source Books --target Movies_and_TV      # random user
+python app.py recommend --user A100FKZWCI9ND6 --num 5
+python app.py evaluate-engine --k 10 --n 300                        # both directions
+python app.py ncf --domain Books                                    # NCF baseline
+python app.py test                                                  # unit tests
+```
+
+Run `python app.py --help` for every command.
 
 ---
 
-## 💻 Usage
+## 🌐 Web App & API
 
-### Recommend films from a reading history
+The UI has four tabs:
 
-```python
-from testers.interactive_llamarec_tester import InteractiveLlamaRecTester
+| Tab | What it does |
+|---|---|
+| **For a user** | Pick a user ID (or a random one) and see recommendations, plus a reality check of how many picks match what they really liked |
+| **Pick what you like** | Search the catalogue, pick a few titles, get recommendations as a brand-new user |
+| **Evaluate** | Run the leave-one-user-out evaluation against the popularity baseline |
+| **API** | Endpoint reference with clickable examples |
 
-tester = InteractiveLlamaRecTester(
-    user_history_path="data/splits/user_history.json",
-    ollama_model="llama3:8b",
-)
+| Method | Endpoint | Parameters |
+|---|---|---|
+| `GET` | `/api/health` | Status, user count, domains |
+| `GET` | `/api/domains` | Items and users per domain |
+| `GET` | `/api/users` | `source`, `target`, `limit`, `offset`, `random` |
+| `GET` | `/api/users/<id>` | One user's profile |
+| `GET` | `/api/items/search` | `domain`, `q`, `limit` |
+| `POST` | `/api/recommend` | `{source_domain, target_domain, k, user_id` or `liked_asins, include_known}` |
+| `GET` | `/api/evaluate` | `source`, `target`, `k`, `n` |
 
-rec = tester.generate_recommendation(
-    user_id="A1B2C3D4E5",
-    source_domain="Books",
-    target_domain="Movies_and_TV",
-    num_recs=3,
-)
-
-print(rec["recommendations"])
+```bash
+curl -X POST http://127.0.0.1:5000/api/recommend \
+  -H "Content-Type: application/json" \
+  -d '{"source_domain": "Movies_and_TV", "target_domain": "Books", "k": 5, "liked_asins": ["B000003KHS"]}'
 ```
 
-### Compare cold and warm users
-
-```python
-from runners.run_cold_warm_scenarios import ColdWarmScenarioRunner
-from testers.test_prompt_generator_cold_warm import PromptGeneratorTester
-
-base_tester = PromptGeneratorTester(splits_dir="data/splits")
-runner = ColdWarmScenarioRunner(base_tester)
-
-results = runner.run_comparative_study(
-    max_users_per_scenario=20,
-    temperature=0.7,
-)
-```
-
-### Score the results
-
-```python
-from evaluations.quantitative_evaluator import RecommendationEvaluator
-
-evaluator = RecommendationEvaluator("data/splits/user_history.json")
-
-results = evaluator.evaluate_recommendations("results/llamarec_results.json", k=3)
-evaluator.generate_evaluation_report(results, "evaluation_report.txt")
-```
+The history file location can be changed with the `LLAMAREC_USER_HISTORY` environment variable.
 
 <details>
-<summary><b>Model configuration</b></summary>
+<summary><b>Use the engine from Python</b></summary>
 
 <br>
 
 ```python
-model_configs = {
-    "base_model": {
-        "model_name": "llama3:8b",
-        "temperature": 0.7,
-        "max_tokens": 512,
-    },
-    "large_model": {
-        "model_name": "llama3:70b",
-        "temperature": 0.7,
-        "max_tokens": 512,
-    },
-}
-```
+from core.data import load_user_history
+from core.engine import CrossDomainEngine
 
-</details>
+engine = CrossDomainEngine(load_user_history("data/splits/user_history.json"))
 
-<details>
-<summary><b>Prompt templates</b></summary>
+rec = engine.recommend_for_user("A100FKZWCI9ND6", "Books", "Movies_and_TV", k=5)
+for r in rec["recommendations"]:
+    print(r["title"], "-", r["reason"])
 
-<br>
-
-**Standard**
-
-```text
-Based on the user's preferences in {source_domain}, generate personalised
-recommendations for items from {target_domain}.
-
-User's highly-rated items: {user_history}
-Target domain: {target_domain}
-
-Recommend top 3 items with explanations.
-```
-
-**Chain-of-thought**
-
-```text
-You are an expert recommendation system. Analyse the user's preferences step-by-step.
-
-Step 1: Analyse patterns in user's {source_domain} preferences: {user_history}
-Step 2: Identify transferable preferences to {target_domain}
-Step 3: Recommend 3 {target_domain} items that match these patterns
-
-Provide detailed reasoning for each recommendation.
-```
-
-</details>
-
-<details>
-<summary><b>Experimental design and statistics</b></summary>
-
-<br>
-
-```python
-from experiments.advanced_experimental_designs import (
-    AdvancedExperimentalDesigner,
-    ExperimentalStatistics,
-)
-
-designer = AdvancedExperimentalDesigner(base_tester)
-
-# Temperature × user type × domain × template
-factorial_results = designer.run_full_experiment_suite("factorial")
-
-# How much each component contributes
-ablation_results = designer.run_full_experiment_suite("ablation")
-
-stats = ExperimentalStatistics()
-effect_size = stats.compute_effect_size(group1_scores, group2_scores)
-required_n = stats.power_analysis(effect_size=0.5, power=0.8)
+print(engine.evaluate("Books", "Movies_and_TV", k=10, n_users=300)["methods"])
 ```
 
 </details>
@@ -361,21 +222,34 @@ required_n = stats.power_analysis(effect_size=0.5, power=0.8)
 | **Diversity** | Intra-list diversity | How different the picks are from each other |
 | | Coverage | How much of the catalogue gets recommended overall |
 | | Novelty | How far the picks move away from the user's history |
-| **System** | Response time | How long the model takes to answer |
-| | Success rate | How often a call returns a usable result |
-| | Quality score | An automated check on the recommendation quality |
+| **Ranking** | Hit rate@K | Share of users with at least one relevant item in their top K |
 
-**Baselines:** Neural Collaborative Filtering (NCF), content-based filtering and a hybrid approach.
+**Baselines:** popularity (built into the engine evaluation), Neural Collaborative Filtering (NCF) and content-based filtering.
 
 ---
 
 ## 🏆 Results
 
+### Data-based engine (this app)
+
+Leave-one-user-out, 300 random users per direction, top 10 recommendations. Reproduce with `python app.py evaluate-engine --k 10 --n 300`.
+
+| Direction | Method | Hit rate@10 | Precision@10 | Recall@10 | NDCG@10 |
+|---|---|---:|---:|---:|---:|
+| Books → Movies & TV | **Co-occurrence** | **0.253** | **0.045** | **0.034** | **0.057** |
+| | Popularity | 0.177 | 0.030 | 0.023 | 0.038 |
+| Movies & TV → Books | **Co-occurrence** | **0.243** | **0.042** | **0.036** | **0.054** |
+| | Popularity | 0.210 | 0.034 | 0.036 | 0.049 |
+
+About one user in four gets at least one item they really liked in their top 10, from their other-domain ratings alone. The gain over popularity is clear for Books → Movies & TV (+43% hit rate) and smaller for Movies & TV → Books (+16%).
+
+### Earlier LLM study (dissertation, `results/`)
+
+The original dissertation prompted a local Llama 3 model. That code has been retired from this repository (it remains in the git history); its saved outputs are in `results/`.
+
 | Finding | Detail |
 |---|---|
-| 🧊 **Cold-start users** | LLAMAREC did best for users with little history, which is where traditional methods tend to struggle. |
-| 🔀 **Strongest transfers** | Books ↔ Movies and Music ↔ Books had the highest transfer success rates. |
-| 💬 **Explanations** | Over 95% of recommendations came with a clear reason tied to the user's source preferences. |
+| 💬 **Explanations** | Over 95% of LLM recommendations came with a reason tied to the user's source preferences. |
 | 🔥 **Warm vs cold** | In the `llama3.1:8b` study (33 users, 39 prompts) warm users scored 3.83 vs 3.74 for cold users on the 5-point heuristic quality score. The difference was not statistically significant (t = −0.97, p = 0.34); see [results/cold_warm_study_report_20250530_111755.txt](results/cold_warm_study_report_20250530_111755.txt). |
 
 ---
@@ -435,7 +309,6 @@ If LLAMAREC helps your research, please cite it:
 - **Dr Aboozar Taherkhani** for supervising the project
 - **De Montfort University** for research support and resources
 - **Meta AI** for the Llama 3 model family
-- **The Ollama team** for making local LLMs easy to run
 - **McAuley Lab** for the public Amazon Reviews dataset
 
 ---

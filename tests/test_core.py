@@ -1,13 +1,12 @@
-"""Fast unit tests for LLAMAREC core pieces (no Ollama or dataset required)."""
+"""Unit tests for metrics and the result-file evaluator (no dataset required)."""
 import json
 
 import pytest
 
-from utils.metrics import jaccard_diversity, ndcg_at_k, precision_at_k, recall_at_k
-from prompts import prompt_templates
+from core.metrics import jaccard_diversity, ndcg_at_k, precision_at_k, recall_at_k
 
 
-# --- utils.metrics -----------------------------------------------------------
+# --- core.metrics ------------------------------------------------------------
 def test_precision_at_k_counts_case_insensitive_hits():
     preds = ["The Matrix", "Inception", "Up"]
     actual = ["the matrix", "up"]
@@ -34,24 +33,12 @@ def test_jaccard_diversity_bounds():
     assert jaccard_diversity(["only one"]) == 0.0
 
 
-# --- prompts.prompt_templates -----------------------------------------------
-def test_basic_template_formats_all_placeholders():
-    text = prompt_templates.BASIC_TEMPLATE.format(
-        source_domain="Books",
-        target_domain="Movies_and_TV",
-        user_history="Hatchet, Holes",
-        num_recs=3,
-    )
-    assert "Books" in text and "Movies_and_TV" in text and "Hatchet" in text
-    assert "{" not in text
-
-
-# --- evaluations.quantitative_evaluator -------------------------------------
+# --- evaluation.quantitative_evaluator --------------------------------------
 @pytest.fixture
 def evaluator(tmp_path):
     pytest.importorskip("pandas")
     pytest.importorskip("matplotlib")
-    from evaluations.quantitative_evaluator import RecommendationEvaluator
+    from evaluation.quantitative_evaluator import RecommendationEvaluator
 
     history = {
         "u1": {

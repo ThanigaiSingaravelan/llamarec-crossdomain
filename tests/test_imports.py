@@ -9,10 +9,7 @@ import os
 
 import pytest
 
-PROJECT_PACKAGES = {
-    "baselines", "evaluations", "experiments", "preprocessing",
-    "prompts", "runners", "scripts", "testers", "utils",
-}
+PROJECT_PACKAGES = {"core", "evaluation", "preprocessing", "webapp"}
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 

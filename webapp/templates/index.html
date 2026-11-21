@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLAMAREC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="logo">LR</span>
+    <div>
+      <h1>LLAMAREC</h1>
+      <p>Cross-domain recommendations from real Amazon ratings</p>
+    </div>
+  </div>
+  <div id="status" class="status">Loading data…</div>
+</header>
+
+<main>
+  <section class="direction card">
+    <label>From
+      <select id="source"></select>
+    </label>
+    <button id="swap" class="ghost" title="Swap direction" aria-label="Swap direction">⇄</button>
+    <label>To
+      <select id="target"></select>
+    </label>
+    <label>How many
+      <input id="k" type="number" min="1" max="50" value="10">
+    </label>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="user">For a user</button>
+    <button class="tab" data-tab="taste">Pick what you like</button>
+    <button class="tab" data-tab="evaluate">Evaluate</button>
+    <button class="tab" data-tab="api">API</button>
+  </nav>
+
+  <!-- For a user -->
+  <section id="tab-user" class="panel card">
+    <p class="hint">Uses everything a real user liked in the source domain. Their own ratings are hidden from the
+      model, so you can compare the picks with what they actually liked.</p>
+    <div class="row">
+      <input id="userId" placeholder="User ID, e.g. A100FKZWCI9ND6" autocomplete="off">
+      <button id="randomUser" class="ghost">Random user</button>
+      <button id="recUser" class="primary">Recommend</button>
+    </div>
+    <div id="userOut"></div>
+  </section>
+
+  <!-- Pick what you like -->
+  <section id="tab-taste" class="panel card" hidden>
+    <p class="hint">A brand-new user: search the source catalogue, pick a few titles you like, then get recommendations.</p>
+    <div class="row">
+      <input id="q" placeholder="Search titles… (e.g. harry potter)" autocomplete="off">
+    </div>
+    <ul id="searchResults" class="results"></ul>
+    <div id="picked" class="chips"></div>
+    <div class="row"><button id="recTaste" class="primary" disabled>Recommend from my picks</button></div>
+    <div id="tasteOut"></div>
+  </section>
+
+  <!-- Evaluate -->
+  <section id="tab-evaluate" class="panel card" hidden>
+    <p class="hint">Leave-one-user-out test: for each sampled user, recommend from their source likes (with their own
+      data removed) and check against what they really liked in the target domain. Compared with a popularity baseline.</p>
+    <div class="row">
+      <label class="inline">Users <input id="nUsers" type="number" min="10" max="2000" value="200"></label>
+      <button id="runEval" class="primary">Run evaluation</button>
+    </div>
+    <div id="evalOut"></div>
+  </section>
+
+  <!-- API -->
+  <section id="tab-api" class="panel card" hidden>
+    <p class="hint">Everything in this page uses these JSON endpoints.</p>
+    <table class="api">
+      <tr><td><code>GET</code></td><td><a href="/api/health">/api/health</a></td><td>Status and loaded domains</td></tr>
+      <tr><td><code>GET</code></td><td><a href="/api/domains">/api/domains</a></td><td>Items and users per domain</td></tr>
+      <tr><td><code>GET</code></td><td><a href="/api/users?source=Books&target=Movies_and_TV&limit=5">/api/users</a></td><td><code>source, target, limit, offset, random</code></td></tr>
+      <tr><td><code>GET</code></td><td>/api/users/&lt;id&gt;</td><td>Profile of one user</td></tr>
+      <tr><td><code>GET</code></td><td><a href="/api/items/search?domain=Books&q=potter">/api/items/search</a></td><td><code>domain, q, limit</code></td></tr>
+      <tr><td><code>POST</code></td><td>/api/recommend</td><td><code>{source_domain, target_domain, k, user_id | liked_asins}</code></td></tr>
+      <tr><td><code>GET</code></td><td><a href="/api/evaluate?source=Books&target=Movies_and_TV&k=10&n=100">/api/evaluate</a></td><td><code>source, target, k, n</code></td></tr>
+    </table>
+    <pre class="code">curl -X POST http://127.0.0.1:5000/api/recommend \
+  -H "Content-Type: application/json" \
+  -d '{"source_domain":"Books","target_domain":"Movies_and_TV","k":5}'</pre>
+  </section>
+</main>
+
+<footer>Data-based engine: “users who liked this also liked” co-occurrence across domains. No LLM, no Ollama.</footer>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
