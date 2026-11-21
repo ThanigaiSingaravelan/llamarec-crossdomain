@@ -4,95 +4,166 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LLAMAREC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
-<header class="top">
-  <div class="brand">
-    <span class="logo">LR</span>
-    <div>
-      <h1>LLAMAREC</h1>
-      <p>Cross-domain recommendations from real Amazon ratings</p>
+<div class="shell">
+
+  <!-- ================= Sidebar ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M4 5h7v14H4zM13 5h7v6h-7zM13 13h7v6h-7z"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">LLAMAREC</div>
+        <div class="brand-sub">Cross-domain recommender</div>
+      </div>
     </div>
-  </div>
-  <div id="status" class="status">Loading data…</div>
-</header>
 
-<main>
-  <section class="direction card">
-    <label>From
-      <select id="source"></select>
-    </label>
-    <button id="swap" class="ghost" title="Swap direction" aria-label="Swap direction">⇄</button>
-    <label>To
-      <select id="target"></select>
-    </label>
-    <label>How many
-      <input id="k" type="number" min="1" max="50" value="10">
-    </label>
-  </section>
+    <section class="side-block">
+      <div class="side-label">Direction</div>
+      <div class="direction">
+        <select id="source" class="domain-select" aria-label="From domain"></select>
+        <button id="swap" class="swap" title="Swap direction" aria-label="Swap direction">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>
+        </button>
+        <select id="target" class="domain-select" aria-label="To domain"></select>
+      </div>
+    </section>
 
-  <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="user">For a user</button>
-    <button class="tab" data-tab="taste">Pick what you like</button>
-    <button class="tab" data-tab="evaluate">Evaluate</button>
-    <button class="tab" data-tab="api">API</button>
-  </nav>
+    <section class="side-block">
+      <div class="side-label">Results per list <output id="kOut">10</output></div>
+      <input id="k" type="range" min="3" max="20" value="10" aria-label="Results per list">
+    </section>
 
-  <!-- For a user -->
-  <section id="tab-user" class="panel card">
-    <p class="hint">Uses everything a real user liked in the source domain. Their own ratings are hidden from the
-      model, so you can compare the picks with what they actually liked.</p>
-    <div class="row">
-      <input id="userId" placeholder="User ID, e.g. A100FKZWCI9ND6" autocomplete="off">
-      <button id="randomUser" class="ghost">Random user</button>
-      <button id="recUser" class="primary">Recommend</button>
-    </div>
-    <div id="userOut"></div>
-  </section>
+    <nav class="nav" aria-label="Sections">
+      <button class="nav-item active" data-tab="user">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        Discover for a user
+      </button>
+      <button class="nav-item" data-tab="taste">
+        <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>
+        Build your taste
+      </button>
+      <button class="nav-item" data-tab="evaluate">
+        <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        Evaluate
+      </button>
+      <button class="nav-item" data-tab="api">
+        <svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>
+        API
+      </button>
+    </nav>
 
-  <!-- Pick what you like -->
-  <section id="tab-taste" class="panel card" hidden>
-    <p class="hint">A brand-new user: search the source catalogue, pick a few titles you like, then get recommendations.</p>
-    <div class="row">
-      <input id="q" placeholder="Search titles… (e.g. harry potter)" autocomplete="off">
-    </div>
-    <ul id="searchResults" class="results"></ul>
-    <div id="picked" class="chips"></div>
-    <div class="row"><button id="recTaste" class="primary" disabled>Recommend from my picks</button></div>
-    <div id="tasteOut"></div>
-  </section>
+    <section class="side-stats" id="sideStats" aria-label="Dataset">
+      <div class="side-label">Dataset</div>
+      <div class="stat-row"><span>Users</span><b id="statUsers">–</b></div>
+    </section>
+  </aside>
 
-  <!-- Evaluate -->
-  <section id="tab-evaluate" class="panel card" hidden>
-    <p class="hint">Leave-one-user-out test: for each sampled user, recommend from their source likes (with their own
-      data removed) and check against what they really liked in the target domain. Compared with a popularity baseline.</p>
-    <div class="row">
-      <label class="inline">Users <input id="nUsers" type="number" min="10" max="2000" value="200"></label>
-      <button id="runEval" class="primary">Run evaluation</button>
-    </div>
-    <div id="evalOut"></div>
-  </section>
+  <!-- ================= Main ================= -->
+  <main class="main">
 
-  <!-- API -->
-  <section id="tab-api" class="panel card" hidden>
-    <p class="hint">Everything in this page uses these JSON endpoints.</p>
-    <table class="api">
-      <tr><td><code>GET</code></td><td><a href="/api/health">/api/health</a></td><td>Status and loaded domains</td></tr>
-      <tr><td><code>GET</code></td><td><a href="/api/domains">/api/domains</a></td><td>Items and users per domain</td></tr>
-      <tr><td><code>GET</code></td><td><a href="/api/users?source=Books&target=Movies_and_TV&limit=5">/api/users</a></td><td><code>source, target, limit, offset, random</code></td></tr>
-      <tr><td><code>GET</code></td><td>/api/users/&lt;id&gt;</td><td>Profile of one user</td></tr>
-      <tr><td><code>GET</code></td><td><a href="/api/items/search?domain=Books&q=potter">/api/items/search</a></td><td><code>domain, q, limit</code></td></tr>
-      <tr><td><code>POST</code></td><td>/api/recommend</td><td><code>{source_domain, target_domain, k, user_id | liked_asins}</code></td></tr>
-      <tr><td><code>GET</code></td><td><a href="/api/evaluate?source=Books&target=Movies_and_TV&k=10&n=100">/api/evaluate</a></td><td><code>source, target, k, n</code></td></tr>
-    </table>
-    <pre class="code">curl -X POST http://127.0.0.1:5000/api/recommend \
+    <!-- Discover for a user -->
+    <section id="tab-user" class="view">
+      <header class="view-head">
+        <div>
+          <h1>Discover for a user</h1>
+          <p>Recommendations from everything a real user liked. Their own ratings are hidden from the model.</p>
+        </div>
+      </header>
+
+      <div class="searchbar">
+        <svg viewBox="0 0 24 24" class="icon"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input id="userId" placeholder="Enter a user ID, e.g. A100FKZWCI9ND6" autocomplete="off">
+        <button id="randomUser" class="btn ghost">Random user</button>
+        <button id="recUser" class="btn primary">Recommend</button>
+      </div>
+
+      <div id="userOut" class="out">
+        <div class="empty">
+          <div class="empty-art" aria-hidden="true">
+            <span class="tile b">B</span><span class="arrow">→</span><span class="tile m">M</span>
+          </div>
+          <p>Pick a random user to see what their bookshelf says about their film taste.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Build your taste -->
+    <section id="tab-taste" class="view" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Build your taste</h1>
+          <p>Be a brand-new user: pick a few titles you like and get recommendations from the other domain.</p>
+        </div>
+      </header>
+
+      <div class="split">
+        <div class="panel">
+          <div class="searchbar compact">
+            <svg viewBox="0 0 24 24" class="icon"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="q" placeholder="Search titles… (e.g. godfather, harry potter)" autocomplete="off">
+          </div>
+          <ul id="searchResults" class="search-list"><li class="muted">Type at least 2 characters.</li></ul>
+        </div>
+        <div class="panel tray">
+          <div class="tray-head"><span>Your picks</span><span id="pickCount" class="count">0</span></div>
+          <div id="picked" class="picked"><p class="muted">Nothing picked yet.</p></div>
+          <button id="recTaste" class="btn primary block" disabled>Get recommendations</button>
+        </div>
+      </div>
+
+      <div id="tasteOut" class="out"></div>
+    </section>
+
+    <!-- Evaluate -->
+    <section id="tab-evaluate" class="view" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Evaluate</h1>
+          <p>Leave-one-user-out: hide each sampled user's own data, recommend from their source likes,
+             and check against what they really liked. Compared with recommending the most popular items.</p>
+        </div>
+        <div class="head-actions">
+          <label class="inline">Users
+            <input id="nUsers" type="number" min="10" max="2000" value="200">
+          </label>
+          <button id="runEval" class="btn primary">Run evaluation</button>
+        </div>
+      </header>
+      <div id="evalOut" class="out">
+        <div class="empty"><p>Run an evaluation to compare the engine with the popularity baseline.</p></div>
+      </div>
+    </section>
+
+    <!-- API -->
+    <section id="tab-api" class="view" hidden>
+      <header class="view-head">
+        <div>
+          <h1>API</h1>
+          <p>Everything on this page uses these JSON endpoints. Click a GET link to try it.</p>
+        </div>
+      </header>
+      <div class="api-grid">
+        <a class="api-card" href="/api/health" target="_blank"><span class="verb get">GET</span><code>/api/health</code><p>Status, user count and domains</p></a>
+        <a class="api-card" href="/api/domains" target="_blank"><span class="verb get">GET</span><code>/api/domains</code><p>Items and users per domain</p></a>
+        <a class="api-card" href="/api/users?source=Books&target=Movies_and_TV&limit=5" target="_blank"><span class="verb get">GET</span><code>/api/users</code><p><code>source, target, limit, offset, random</code></p></a>
+        <div class="api-card"><span class="verb get">GET</span><code>/api/users/&lt;id&gt;</code><p>One user's profile</p></div>
+        <a class="api-card" href="/api/items/search?domain=Books&q=potter" target="_blank"><span class="verb get">GET</span><code>/api/items/search</code><p><code>domain, q, limit</code></p></a>
+        <div class="api-card"><span class="verb post">POST</span><code>/api/recommend</code><p><code>source_domain, target_domain, k, user_id | liked_asins, include_known</code></p></div>
+        <a class="api-card" href="/api/evaluate?source=Books&target=Movies_and_TV&k=10&n=100" target="_blank"><span class="verb get">GET</span><code>/api/evaluate</code><p><code>source, target, k, n</code></p></a>
+      </div>
+      <pre class="code">curl -X POST http://127.0.0.1:5000/api/recommend \
   -H "Content-Type: application/json" \
   -d '{"source_domain":"Books","target_domain":"Movies_and_TV","k":5}'</pre>
-  </section>
-</main>
+    </section>
 
-<footer>Data-based engine: “users who liked this also liked” co-occurrence across domains. No LLM, no Ollama.</footer>
+  </main>
+</div>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

@@ -31,6 +31,8 @@ LLAMAREC closes that gap using **10,442 real Amazon users who rated both Books a
 
 It ships as a **Flask web app with a JSON API**. It needs no GPU, no LLM and no internet connection, and starts in about a second.
 
+> **Data:** 10,442 users, 15,683 books and 19,304 films and TV titles, from the [Amazon Reviews 2023](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023) dataset.
+
 <table>
 <tr>
 <td width="50%" valign="top">
@@ -214,17 +216,17 @@ print(engine.evaluate("Books", "Movies_and_TV", k=10, n_users=300)["methods"])
 
 ## 📏 Evaluation
 
-| Category | Metric | What it tells you |
-|---|---|---|
-| **Ranking** | Precision@K | How many of the top K picks were relevant |
-| | Recall@K | How many of the user's liked items were found |
-| | NDCG@K | Whether the best items were ranked near the top |
-| **Diversity** | Intra-list diversity | How different the picks are from each other |
-| | Coverage | How much of the catalogue gets recommended overall |
-| | Novelty | How far the picks move away from the user's history |
-| **Ranking** | Hit rate@K | Share of users with at least one relevant item in their top K |
+The engine is tested with **leave-one-user-out** evaluation: for each sampled user, their own ratings are removed from the data, recommendations are made from what they liked in the source domain, and the list is checked against what they really liked in the target domain.
 
-**Baselines:** popularity (built into the engine evaluation), Neural Collaborative Filtering (NCF) and content-based filtering.
+| Metric | What it tells you |
+|---|---|
+| Hit rate@K | Share of users with at least one item they really liked in their top K |
+| Precision@K | How many of the top K picks were items they liked |
+| Recall@K | How many of the items they liked were found |
+| NDCG@K | Whether the right items were ranked near the top |
+| Diversity | How different the picks are from each other (title word overlap) |
+
+**Baselines:** a popularity baseline is scored on the same users in every evaluation run. Neural Collaborative Filtering (`python app.py ncf`) and content-based filtering are also available in `evaluation/`.
 
 ---
 
@@ -256,19 +258,23 @@ The original dissertation prompted a local Llama 3 model. That code has been ret
 
 ## 🛣️ Roadmap
 
-**Features**
-- [ ] Recommendations that use images as well as text
-- [ ] Real-time serving
-- [ ] Fine-tuning support
-- [ ] More domains, such as games and electronics
-- [ ] Web interface
-- [ ] API endpoint for other apps
+**Done**
+- [x] Web interface (Flask)
+- [x] JSON API for other apps
+- [x] Explainable recommendations
+- [x] Leave-one-user-out evaluation with a popularity baseline
+- [x] Automated tests and CI
+
+**Next**
+- [ ] More domains: CDs & Vinyl and Digital Music are already in `data/processed/`, they need to be added to the profiling step
+- [ ] Use ratings and review text, not just "liked", to weight recommendations
+- [ ] Compare the engine directly with the NCF baseline on the same users
+- [ ] Coverage and novelty metrics
+- [ ] Docker image for one-command deployment
 
 **Research**
-- [ ] Conversational recommendations
-- [ ] Causal analysis of cross-domain transfer
-- [ ] Tracking user satisfaction over time
-- [ ] Checking for cultural and demographic bias
+- [ ] Combine co-occurrence with an LLM for richer explanations
+- [ ] Check recommendations for popularity and demographic bias
 
 ---
 
@@ -280,10 +286,10 @@ Contributions are welcome. Open an issue or pull request.
 pip install -r requirements-dev.txt
 
 python app.py test          # or: python -m pytest
-
-black .
 flake8 .
 ```
+
+Every push and pull request runs the tests on Python 3.10, 3.11 and 3.12 through GitHub Actions. The tests use a small built-in dataset, so they don't need the Amazon data.
 
 ---
 
