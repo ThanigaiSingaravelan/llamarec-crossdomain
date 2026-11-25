@@ -10,6 +10,10 @@ async function api(path, options = {}) {
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
+let ENGINE = "co-occurrence";
+const isLLM = () => ENGINE === "llm";
+const recMsg = () => (isLLM() ? "Generating with the fine-tuned LLM… (the first request loads the model)"
+  : "Finding recommendations…");
 const source = () => $("#source").value;
 const target = () => $("#target").value;
 const k = () => parseInt($("#k").value, 10) || 10;
@@ -41,6 +45,7 @@ async function init() {
     $("#target").innerHTML = opts;
     if (h.domains.length > 1) $("#target").value = h.domains[1];
     $("#statUsers").textContent = h.users.toLocaleString();
+    $("#engineBlock").hidden = !(h.engines || []).includes("llm");
     $("#sideStats").insertAdjacentHTML("beforeend", Object.entries(stats).map(([d, s]) =>
       `<div class="stat-row"><span><i class="dot ${isBooks(d) ? "b" : "m"}"></i>${pretty(d)}</span>
        <b>${s.items.toLocaleString()}</b></div>`).join(""));
@@ -57,6 +62,12 @@ document.querySelectorAll(".nav-item").forEach((t) =>
   }));
 
 $("#k").addEventListener("input", () => ($("#kOut").textContent = k()));
+document.querySelectorAll(".engine-seg button").forEach((b) => b.addEventListener("click", () => {
+  ENGINE = b.dataset.engine;
+  document.querySelectorAll(".engine-seg button").forEach((x) => {
+    x.classList.toggle("on", x === b); x.setAttribute("aria-checked", String(x === b));
+  });
+}));
 $("#swap").addEventListener("click", () => {
   const s = source(); $("#source").value = target(); $("#target").value = s; resetTaste();
 });
@@ -64,7 +75,13 @@ $("#source").addEventListener("change", resetTaste);
 
 /* ---------- rendering ---------- */
 function recCards(data, { flagHits = false } = {}) {
+  const llm = data.strategy === "fine-tuned LLM";
+  const label = llm ? "liked by" : "support";
   const max = Math.max(1, ...data.recommendations.map((r) => r.support || 0));
+  const note = llm && data.invented && data.invented.length
+    ? `<p class="note">The LLM also suggested ${data.invented.length} title${data.invented.length > 1 ? "s" : ""} not in the catalogue (hidden): ${data.invented.slice(0, 3).map(esc).join(", ")}${data.invented.length > 3 ? "…" : ""}</p>`
+    : "";
+  if (!data.recommendations.length) return `<div class="empty"><p>No catalogue matches for this one.</p></div>${note}`;
   return `<div class="rec-grid">${data.recommendations.map((r, i) => {
     const hit = flagHits && r.liked_by_user;
     const pct = Math.round(((r.support || 0) / max) * 100);
@@ -76,9 +93,9 @@ function recCards(data, { flagHits = false } = {}) {
         <div class="rec-title" title="${esc(r.title)}">${esc(r.title)}</div>
         <div class="rec-why">${esc(r.reason)}</div>
       </div>
-      <div class="support"><span>support</span><div class="bar"><i style="width:${pct}%"></i></div><span>${r.support}</span></div>
+      <div class="support"><span>${label}</span><div class="bar"><i style="width:${pct}%"></i></div><span>${r.support}</span></div>
     </article>`;
-  }).join("")}</div>`;
+  }).join("")}</div>${note}`;
 }
 const chips = (items, domain) =>
   items.map((x) => `<span class="chip ${isBooks(domain) ? "b" : "m"}" title="${esc(x.title)}">${esc(x.title)}</span>`).join("");
@@ -95,8 +112,8 @@ $("#recUser").addEventListener("click", recommendUser);
 $("#userId").addEventListener("keydown", (e) => e.key === "Enter" && recommendUser());
 
 async function recommendUser() {
-  const out = $("#userOut"); loading(out, "Finding recommendations…");
-  const body = { source_domain: source(), target_domain: target(), k: k() };
+  const out = $("#userOut"); loading(out, recMsg());
+  const body = { source_domain: source(), target_domain: target(), k: k(), engine: ENGINE };
   const id = $("#userId").value.trim();
   if (id) body.user_id = id;
   try {
@@ -179,10 +196,10 @@ $("#picked").addEventListener("click", (e) => {
   document.querySelector(`#searchResults li[data-asin="${CSS.escape(a)}"]`)?.classList.remove("on");
 });
 $("#recTaste").addEventListener("click", async () => {
-  const out = $("#tasteOut"); loading(out, "Finding recommendations…");
+  const out = $("#tasteOut"); loading(out, recMsg());
   try {
     const d = await api("/api/recommend", { method: "POST", body: JSON.stringify(
-      { source_domain: source(), target_domain: target(), k: k(), liked_asins: [...picked.keys()] }) });
+      { source_domain: source(), target_domain: target(), k: k(), engine: ENGINE, liked_asins: [...picked.keys()] }) });
     out.innerHTML = `<div class="section-title"><h2>Because you picked ${d.seeds.length} ${pretty(d.source_domain)} title${d.seeds.length > 1 ? "s" : ""}</h2>
       <span class="pill">${esc(d.strategy)}</span></div>${recCards(d)}`;
     out.scrollIntoView({ behavior: "smooth", block: "start" });

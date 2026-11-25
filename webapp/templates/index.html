@@ -39,6 +39,14 @@
       <input id="k" type="range" min="3" max="20" value="10" aria-label="Results per list">
     </section>
 
+    <section class="side-block" id="engineBlock" hidden>
+      <div class="side-label">Engine</div>
+      <div class="engine-seg" role="radiogroup" aria-label="Recommendation engine">
+        <button class="on" data-engine="co-occurrence" role="radio" aria-checked="true">Co-occurrence</button>
+        <button data-engine="llm" role="radio" aria-checked="false">Fine-tuned LLM</button>
+      </div>
+    </section>
+
     <nav class="nav" aria-label="Sections">
       <button class="nav-item active" data-tab="user">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>

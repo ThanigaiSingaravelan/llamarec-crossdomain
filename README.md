@@ -193,6 +193,7 @@ llamarec-crossdomain/
 ├── app.py            command-line entry point
 ├── core/             recommendation engine, data loading, metrics
 ├── webapp/           Flask app: JSON API, page, styles, script
+├── llm/              optional fine-tuned LLM: dataset, LoRA training, grounding, evaluation
 ├── preprocessing/    raw Amazon data → processed CSVs → splits
 ├── evaluation/       NCF and content-based baselines, result-file evaluators
 ├── tests/            pytest suite, runs in CI on a small built-in dataset
@@ -203,11 +204,32 @@ llamarec-crossdomain/
 
 <br>
 
+## 🤖 Fine-tuned LLM (experimental)
+
+Alongside the co-occurrence engine, LLAMAREC can fine-tune a small LLM, [Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct), on the same data with LoRA. Each training example is *"this person liked these books"* → *"they also liked these films"* (and the reverse).
+
+- **Fair split:** users are divided 80/20 by a fixed rule. The model trains on 16,410 examples from 80% of users; the other 20% are only used for testing.
+- **Grounded output:** every title the model writes is matched to a real product in the catalogue. Titles that don't exist are counted as *invented* and never shown.
+- **Honest comparison:** `llm-eval` scores popularity, the co-occurrence engine, the untrained Qwen model and the fine-tuned model on the same held-out users with the same inputs. The co-occurrence engine and popularity are rebuilt from training users only.
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu130   # CUDA build of PyTorch
+pip install -r requirements-llm.txt
+python app.py llm-train          # ~2 h on an RTX 4050 (6 GB)
+python app.py llm-eval --n 300   # comparison table, saved to results/
+python app.py serve              # an "Engine" switch appears in the sidebar
+```
+
+> [!NOTE]
+> Training is in progress; results will be added here once the evaluation has run.
+
+<br>
+
 ## 🧪 Development
 
 ```bash
 pip install -r requirements-dev.txt
-python app.py test     # 52 tests: engine, API, metrics, imports
+python app.py test     # 64 tests: engine, LLM pipeline, API, metrics, imports
 flake8 .
 ```
 
@@ -219,7 +241,7 @@ Every push and pull request runs the tests on Python 3.10, 3.11 and 3.12 with Gi
 
 This started as an MSc dissertation asking whether a large language model (Llama 3, run locally) could transfer a person's taste from one domain to another. The outputs of those experiments are kept in [`results/`](results/). One finding was that warm users (3.83) and cold users (3.74) scored almost the same on the 5-point heuristic quality score (p = 0.34); see the [study report](results/cold_warm_study_report_20250530_111755.txt).
 
-The current version replaces the LLM with a transparent, data-driven engine. It's faster, needs no GPU, and can be measured directly against what real users liked. The LLM code remains in the git history.
+The current version is built around a transparent, data-driven engine that's fast, needs no GPU, and can be measured directly against what real users liked. The original prompting code remains in the git history; the [fine-tuned LLM](#-fine-tuned-llm-experimental) revisits the LLM idea by training a model on the data itself.
 
 <br>
 

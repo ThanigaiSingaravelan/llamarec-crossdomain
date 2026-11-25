@@ -7,14 +7,20 @@ from webapp import create_app  # noqa: E402
 
 
 @pytest.fixture
-def client(history):
-    app = create_app({"TESTING": True, "HISTORY": history})
+def no_llm(tmp_path):
+    """Never pick up a locally trained model: tests must behave the same on every machine."""
+    return str(tmp_path / "no-model")
+
+
+@pytest.fixture
+def client(history, no_llm):
+    app = create_app({"TESTING": True, "HISTORY": history, "LLM_ADAPTER_DIR": no_llm})
     return app.test_client()
 
 
 @pytest.fixture
-def empty_client():
-    return create_app({"TESTING": True, "HISTORY": {}}).test_client()
+def empty_client(no_llm):
+    return create_app({"TESTING": True, "HISTORY": {}, "LLM_ADAPTER_DIR": no_llm}).test_client()
 
 
 def test_index_page(client):
@@ -30,7 +36,8 @@ def test_static_assets(client):
 
 def test_health(client):
     data = client.get("/api/health").get_json()
-    assert data == {"status": "ok", "users": 8, "domains": ["Books", "Movies_and_TV"]}
+    assert data == {"status": "ok", "users": 8, "domains": ["Books", "Movies_and_TV"],
+                    "engines": ["co-occurrence"]}
 
 
 def test_health_without_data(empty_client):
@@ -97,3 +104,46 @@ def test_evaluate(client):
     data = client.get("/api/evaluate?source=Books&target=Movies_and_TV&k=1&n=10").get_json()
     assert set(data["methods"]) == {"co-occurrence", "popularity"}
     assert client.get("/api/evaluate?source=Books&target=Nothing").status_code == 400
+
+
+# --- optional fine-tuned LLM engine ------------------------------------------
+class FakeLLM:
+    """Stands in for llm.recommend.LLMRecommender: always 'generates' the same text."""
+    text = "The Lord of the Rings\nMade Up Film\nSe7en"
+
+    def recommend(self, engine, source, target, source_titles, k=10, exclude_asins=(), matcher=None):
+        from llm.recommend import CatalogMatcher, ground
+        matcher = CatalogMatcher(engine.titles[target], engine.popularity[target])
+        return ground(self.text, matcher, engine, source, target, source_titles, k, exclude_asins)
+
+
+@pytest.fixture
+def llm_client(history, tmp_path):
+    app = create_app({"TESTING": True, "HISTORY": history, "LLM": FakeLLM()})
+    return app.test_client()
+
+
+def test_llm_unavailable_returns_503(history, tmp_path):
+    app = create_app({"TESTING": True, "HISTORY": history, "LLM_ADAPTER_DIR": str(tmp_path / "missing")})
+    res = app.test_client().post("/api/recommend", json={"engine": "llm", "user_id": "u1"})
+    assert res.status_code == 503 and "llm-train" in res.get_json()["error"]
+
+
+def test_health_lists_llm_when_available(llm_client):
+    assert llm_client.get("/api/health").get_json()["engines"] == ["co-occurrence", "llm"]
+
+
+def test_llm_recommend_from_picked_items(llm_client):
+    data = llm_client.post("/api/recommend", json={"engine": "llm", "k": 5, "liked_asins": ["B1"]}).get_json()
+    assert data["strategy"] == "fine-tuned LLM"
+    assert [r["title"] for r in data["recommendations"]] == ["The Lord of the Rings", "Se7en"]
+    assert data["invented"] == ["Made Up Film"]
+    assert data["seeds"] == [{"asin": "B1", "title": "The Hobbit"}]
+
+
+def test_llm_recommend_for_user_hides_and_flags_known(llm_client):
+    data = llm_client.post("/api/recommend", json={"engine": "llm", "user_id": "u5", "k": 5}).get_json()
+    assert "Se7en" not in [r["title"] for r in data["recommendations"]]       # u5 already liked it
+    data = llm_client.post("/api/recommend", json={"engine": "llm", "user_id": "u5", "k": 5,
+                                                   "include_known": True}).get_json()
+    assert {r["title"]: r["liked_by_user"] for r in data["recommendations"]}["Se7en"] is True

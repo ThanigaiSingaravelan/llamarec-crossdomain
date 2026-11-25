@@ -1,0 +1,8 @@
+# Optional: fine-tuned LLM recommender (python app.py llm-train / llm-eval, "LLM" engine in the web app)
+# Install AFTER requirements.txt. Training needs an NVIDIA GPU; install the CUDA build of PyTorch first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu130
+-r requirements.txt
+transformers>=5.0
+peft>=0.17
+accelerate>=1.0
+rapidfuzz>=3.0

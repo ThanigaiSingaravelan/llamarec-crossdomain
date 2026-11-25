@@ -9,6 +9,8 @@ Examples:
     python app.py evaluate-engine --k 10 --n 300
     python app.py preprocess all             # raw Amazon files -> data/splits
     python app.py ncf --domain Books
+    python app.py llm-train                  # fine-tune the LLM (GPU, requirements-llm.txt)
+    python app.py llm-eval --n 300           # LLM vs co-occurrence vs popularity
     python app.py test
 
 Extra flags after `preprocess`, `ncf`, `evaluate`, `baselines` and `test` are
@@ -177,6 +179,10 @@ PASSTHROUGH = {
                  "Score saved result files in results/ (Precision/Recall/NDCG)"),
     "baselines": ("evaluation/baseline_evaluation.py",
                   "Compare saved result files against baselines"),
+    "llm-train": ("llm/train.py",
+                  "Fine-tune the LLM recommender with LoRA (needs requirements-llm.txt + GPU)"),
+    "llm-eval": ("llm/evaluate.py",
+                 "Compare the fine-tuned LLM with co-occurrence and popularity on held-out users"),
 }
 FORWARDS_EXTRA = {"preprocess", "ncf", "test", *PASSTHROUGH}
 
