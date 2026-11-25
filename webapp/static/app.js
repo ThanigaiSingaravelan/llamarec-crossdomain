@@ -45,7 +45,12 @@ async function init() {
     $("#target").innerHTML = opts;
     if (h.domains.length > 1) $("#target").value = h.domains[1];
     $("#statUsers").textContent = h.users.toLocaleString();
-    $("#engineBlock").hidden = !(h.engines || []).includes("llm");
+    const hasLLM = (h.engines || []).includes("llm");
+    $("#engineBlock").hidden = !hasLLM;
+    $("#chatUnavailable").hidden = hasLLM;
+    $("#chatForm").hidden = !hasLLM;
+    $("#chatLog").hidden = !hasLLM;
+    if (hasLLM && !location.hash) showTab("chat");
     $("#sideStats").insertAdjacentHTML("beforeend", Object.entries(stats).map(([d, s]) =>
       `<div class="stat-row"><span><i class="dot ${isBooks(d) ? "b" : "m"}"></i>${pretty(d)}</span>
        <b>${s.items.toLocaleString()}</b></div>`).join(""));
@@ -252,7 +257,121 @@ $("#runEval").addEventListener("click", async () => {
   } catch (e) { fail(out, e); }
 });
 
-/* ---------- shareable links: #user=<id>, #taste, #evaluate, #api ---------- */
+/* ---------- Ask LLAMAREC: generative chat ---------- */
+const chat = { seeds: [], source: null, target: null, exclude: [], busy: false };
+
+function addMsg(role, html) {
+  const el = document.createElement("div");
+  el.className = `msg ${role}`;
+  el.innerHTML = role === "bot"
+    ? `<div class="avatar" aria-hidden="true">LR</div><div class="bubble">${html}</div>`
+    : `<div class="bubble">${html}</div>`;
+  $("#chatLog").appendChild(el);
+  el.scrollIntoView({ behavior: "smooth", block: "end" });
+  return el.querySelector(".bubble");
+}
+
+async function* sseEvents(response) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let cut;
+    while ((cut = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, cut); buffer = buffer.slice(cut + 2);
+      const data = block.split("\n").filter((l) => l.startsWith("data: ")).map((l) => l.slice(6)).join("\n");
+      if (data) yield JSON.parse(data);
+    }
+  }
+}
+
+async function sendChat(message) {
+  message = message.trim();
+  if (!message || chat.busy) return;
+  chat.busy = true; $("#chatSend").disabled = true; $("#chatInput").value = "";
+  addMsg("user", esc(message));
+  const bubble = addMsg("bot", `<div class="loading">Reading your message…</div>`);
+  const recs = []; const invented = []; let target = chat.target || target_();
+  let gen, grid, explain;
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, k: Math.min(k(), 15), source_domain: chat.source || source(),
+        target_domain: chat.target || target_(), seeds: chat.seeds, exclude: chat.exclude }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+
+    for await (const ev of sseEvents(res)) {
+      if (ev.type === "understood") {
+        target = ev.target;
+        if (ev.target !== chat.target) chat.exclude = [];
+        bubble.innerHTML = ev.seeds.length
+          ? `<div class="understood">${ev.more ? "More picks based on" : "Based on"} what you liked in ${pretty(ev.source)} →
+               recommending <b>${pretty(ev.target)}</b>
+               <div class="chips">${chips(ev.seeds, ev.source)}</div></div>
+             <div class="gen-label">Generating</div><div class="gen typing"></div>
+             <div class="rec-grid"></div><p class="note invented" hidden></p><p class="explain" hidden></p>`
+          : "";
+        gen = bubble.querySelector(".gen"); grid = bubble.querySelector(".rec-grid");
+        explain = bubble.querySelector(".explain");
+      } else if (ev.type === "token" && gen) {
+        gen.textContent += ev.text; gen.scrollTop = gen.scrollHeight;
+      } else if (ev.type === "rec" && grid) {
+        recs.push(ev.rec);
+        grid.outerHTML = recCards({ recommendations: recs, target_domain: target, strategy: "fine-tuned LLM" });
+        grid = bubble.querySelector(".rec-grid");
+      } else if (ev.type === "invented") {
+        invented.push(ev.title);
+        const note = bubble.querySelector(".invented");
+        if (note) {
+          note.hidden = false;
+          note.textContent = `Not in the catalogue, so hidden: ${invented.slice(0, 4).join(", ")}${invented.length > 4 ? "…" : ""}`;
+        }
+      } else if (ev.type === "explain" && explain) {
+        if (gen) gen.classList.remove("typing");
+        explain.hidden = false; explain.classList.add("typing"); explain.textContent += ev.text;
+      } else if (ev.type === "error") {
+        bubble.insertAdjacentHTML("beforeend", `<p class="error">${esc(ev.message)}</p>`);
+      } else if (ev.type === "done") {
+        if (ev.seeds && ev.seeds.length) {
+          chat.seeds = ev.seeds; chat.source = ev.source; chat.target = ev.target;
+          chat.exclude = [...new Set([...chat.exclude, ...ev.picked])];
+        }
+      }
+      bubble.parentElement.scrollIntoView({ block: "end" });
+    }
+    bubble.querySelectorAll(".typing").forEach((el) => el.classList.remove("typing"));
+    if (recs.length) {
+      bubble.insertAdjacentHTML("beforeend", `<div class="followups">
+        <button class="btn ghost" data-say="More like these">More like these</button></div>`);
+    } else if (gen) {
+      bubble.insertAdjacentHTML("beforeend", `<p class="note">None of the generated titles matched the catalogue. Try naming a few more favourites.</p>`);
+    }
+  } catch (e) {
+    bubble.innerHTML = `<div class="error">${esc(e.message)}</div>`;
+  } finally {
+    chat.busy = false; $("#chatSend").disabled = false; $("#chatInput").focus();
+  }
+}
+const target_ = () => target();
+
+$("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); sendChat($("#chatInput").value); });
+$("#chatLog").addEventListener("click", (e) => {
+  const say = e.target.closest("[data-say]")?.dataset.say || (e.target.closest(".suggestions button")?.textContent);
+  if (!say) return;
+  sendChat(say);
+});
+$("#chatReset").addEventListener("click", () => {
+  Object.assign(chat, { seeds: [], source: null, target: null, exclude: [] });
+  $("#chatLog").querySelectorAll(".msg:not(.intro)").forEach((m) => m.remove());
+  $("#chatInput").focus();
+});
+
+/* ---------- shareable links: #user=<id>, #taste, #evaluate, #api, #chat ---------- */
 function showTab(name) {
   document.querySelector(`.nav-item[data-tab="${name}"]`)?.click();
 }
@@ -265,7 +384,9 @@ async function openFromHash() {
     const n = parseInt(h.split("=")[1], 10);
     if (n) $("#nUsers").value = n;
     $("#runEval").click();
-  } else if (["taste", "api"].includes(h)) {
+  } else if (h.startsWith("ask=")) {
+    showTab("chat"); sendChat(h.slice(4));
+  } else if (["taste", "api", "chat"].includes(h)) {
     showTab(h);
   }
 }

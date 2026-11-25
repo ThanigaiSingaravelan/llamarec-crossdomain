@@ -114,6 +114,59 @@ class LLMRecommender:
                                       repetition_penalty=1.1, pad_token_id=self.tokenizer.pad_token_id)
         return self.tokenizer.batch_decode(out[:, batch["input_ids"].shape[1]:], skip_special_tokens=True)
 
+    def stream(self, chat_messages: List[Dict], use_adapter: bool = True, max_new_tokens: int = 220,
+               sample: bool = False):
+        """Yield generated text pieces as they are produced (for the chat assistant)."""
+        import contextlib
+        import threading
+
+        import torch
+        from transformers import TextIteratorStreamer
+
+        self.load()
+        prompt = self.tokenizer.apply_chat_template(chat_messages, tokenize=False, add_generation_prompt=True)
+        inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
+        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=120)
+        options = dict(max_new_tokens=max_new_tokens, repetition_penalty=1.1,
+                       pad_token_id=self.tokenizer.pad_token_id, streamer=streamer)
+        options.update(do_sample=True, temperature=0.8, top_p=0.9) if sample else options.update(do_sample=False)
+        errors = []
+
+        def run():
+            try:
+                ctx = contextlib.nullcontext() if use_adapter else self.model.disable_adapter()
+                with ctx, torch.no_grad():
+                    self.model.generate(**inputs, **options)
+            except Exception as exc:  # surface generation errors to the caller
+                errors.append(exc)
+                streamer.end()
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        for piece in streamer:
+            yield piece
+        thread.join()
+        if errors:
+            raise errors[0]
+
+    def stream_recommendations(self, source: str, target: str, source_titles: List[str], n: int = MAX_TARGET_ITEMS,
+                               sample: bool = False):
+        msgs = messages(source, target, source_titles)
+        msgs[1]["content"] = msgs[1]["content"].replace(f"Recommend {MAX_TARGET_ITEMS} ", f"Recommend {n} ")
+        return self.stream(msgs, use_adapter=True, max_new_tokens=22 * n + 20, sample=sample)
+
+    def stream_explanation(self, source: str, target: str, liked: List[str], picks: List[str]):
+        """Short natural-language reason, written by the general instruct model (adapter off)."""
+        from llm.data import PRETTY
+        msgs = [{"role": "system", "content": "You are LLAMAREC, a friendly recommendation assistant. "
+                                              "Be concise and specific. Never invent plot details you are unsure of."},
+                {"role": "user", "content":
+                    f"Someone liked these {PRETTY[source]}: {', '.join(liked[:8])}.\n"
+                    f"We recommended these {PRETTY[target]}: {', '.join(picks[:6])}.\n"
+                    "In 2-3 sentences, explain what their taste has in common with these picks. "
+                    "Speak to them directly ('you')."}]
+        return self.stream(msgs, use_adapter=False, max_new_tokens=140)
+
     def recommend(self, engine, source: str, target: str, source_titles: List[str], k: int = 10,
                   exclude_asins=(), matcher: Optional[CatalogMatcher] = None) -> Dict:
         """Recommend `target` items for someone who liked `source_titles`, in the engine's output format."""

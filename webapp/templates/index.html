@@ -48,6 +48,10 @@
     </section>
 
     <nav class="nav" aria-label="Sections">
+      <button class="nav-item" data-tab="chat">
+        <svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
+        Ask LLAMAREC
+      </button>
       <button class="nav-item active" data-tab="user">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
         Discover for a user
@@ -74,6 +78,43 @@
 
   <!-- ================= Main ================= -->
   <main class="main">
+
+    <!-- Ask LLAMAREC: generative chat assistant -->
+    <section id="tab-chat" class="view chat-view" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Ask LLAMAREC</h1>
+          <p>Tell it what you love in plain words. The fine-tuned model writes recommendations live,
+             each one is checked against the real catalogue, and it explains why they fit.</p>
+        </div>
+        <span class="model-pill" id="modelPill">Fine-tuned Qwen2.5-1.5B</span>
+      </header>
+
+      <div id="chatUnavailable" class="empty" hidden>
+        <p><b>The chat assistant needs the fine-tuned model.</b><br>
+           Train it with <code>python app.py llm-train</code>, then restart the app.</p>
+      </div>
+
+      <div id="chatLog" class="chat-log" aria-live="polite">
+        <div class="msg bot intro">
+          <div class="avatar" aria-hidden="true">LR</div>
+          <div class="bubble">
+            <p>Hi! Tell me a few books or films you love and I'll suggest something from the other side.</p>
+            <div class="suggestions" id="suggestions">
+              <button>I loved The Hobbit and Holes, what should I watch?</button>
+              <button>I enjoyed The Godfather and Jaws. Any books for me?</button>
+              <button>To Kill a Mockingbird is my favourite book, recommend films</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form id="chatForm" class="composer" autocomplete="off">
+        <input id="chatInput" placeholder="e.g. I loved Divergent and The Hunger Games…" maxlength="1000" aria-label="Message">
+        <button class="btn ghost" type="button" id="chatReset" title="Start a new conversation">New</button>
+        <button class="btn primary" type="submit" id="chatSend">Send</button>
+      </form>
+    </section>
 
     <!-- Discover for a user -->
     <section id="tab-user" class="view">

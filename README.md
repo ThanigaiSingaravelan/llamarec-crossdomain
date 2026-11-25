@@ -210,6 +210,7 @@ Alongside the co-occurrence engine, LLAMAREC can fine-tune a small LLM, [Qwen2.5
 
 - **Fair split:** users are divided 80/20 by a fixed rule. The model trains on 16,410 examples from 80% of users; the other 20% are only used for testing.
 - **Grounded output:** every title the model writes is matched to a real product in the catalogue. Titles that don't exist are counted as *invented* and never shown.
+- **Chat assistant:** with a trained model, the web app opens on **Ask LLAMAREC**, a chat where you describe what you love in plain words (*"I loved The Hobbit and Holes, what should I watch?"*). The model streams its picks live, each one appears as a card once it's matched to a real title, and it writes a short explanation of why they fit. Follow-ups like *"More like these"* keep the conversation going.
 - **Honest comparison:** `llm-eval` scores popularity, the co-occurrence engine, the untrained Qwen model and the fine-tuned model on the same held-out users with the same inputs. The co-occurrence engine and popularity are rebuilt from training users only.
 
 ```bash
@@ -217,7 +218,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu130   # CUDA bu
 pip install -r requirements-llm.txt
 python app.py llm-train          # ~2 h on an RTX 4050 (6 GB)
 python app.py llm-eval --n 300   # comparison table, saved to results/
-python app.py serve              # an "Engine" switch appears in the sidebar
+python app.py serve              # opens on the Ask LLAMAREC chat; Engine switch in the sidebar
 ```
 
 > [!NOTE]
@@ -229,7 +230,7 @@ python app.py serve              # an "Engine" switch appears in the sidebar
 
 ```bash
 pip install -r requirements-dev.txt
-python app.py test     # 64 tests: engine, LLM pipeline, API, metrics, imports
+python app.py test     # 78 tests: engine, LLM pipeline, chat, API, metrics
 flake8 .
 ```
 
